@@ -5,24 +5,27 @@ from .connection import Base
 
 class Maestro(Base):
     __tablename__ = "maestros"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
+    numero = Column(String(50), nullable=True)
     horas_max_dia = Column(Integer, default=8)
     creado_en = Column(TIMESTAMP, server_default=func.now())
-    
+
     disponibilidades = relationship("DisponibilidadMaestro", back_populates="maestro", cascade="all, delete-orphan")
+    materias = relationship("MaestroMateria", back_populates="maestro", cascade="all, delete-orphan")
     asignaciones = relationship("Asignacion", back_populates="maestro")
 
 class Materia(Base):
     __tablename__ = "materias"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     horas_semanales = Column(Integer, nullable=False)
     creado_en = Column(TIMESTAMP, server_default=func.now())
-    
+
+    maestros = relationship("MaestroMateria", back_populates="materia", cascade="all, delete-orphan")
     asignaciones = relationship("Asignacion", back_populates="materia")
 
 class Grupo(Base):
@@ -35,24 +38,36 @@ class Grupo(Base):
     
     asignaciones = relationship("Asignacion", back_populates="grupo")
 
+class MaestroMateria(Base):
+    __tablename__ = "maestro_materias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    maestro_id = Column(Integer, ForeignKey("maestros.id", ondelete="CASCADE"), nullable=False)
+    materia_id = Column(Integer, ForeignKey("materias.id", ondelete="CASCADE"), nullable=False)
+    creado_en = Column(TIMESTAMP, server_default=func.now())
+
+    maestro = relationship("Maestro", back_populates="materias")
+    materia = relationship("Materia", back_populates="maestros")
+
 class DisponibilidadMaestro(Base):
     __tablename__ = "disponibilidad_maestros"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     maestro_id = Column(Integer, ForeignKey("maestros.id", ondelete="CASCADE"), nullable=False)
     dia_semana = Column(Integer, nullable=False)  # 0=Lunes, 4=Viernes
     hora_inicio = Column(Integer, nullable=False)  # 7-19
     hora_fin = Column(Integer, nullable=False)
-    
+
     maestro = relationship("Maestro", back_populates="disponibilidades")
 
 class HorarioGenerado(Base):
     __tablename__ = "horarios_generados"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     fecha_generacion = Column(TIMESTAMP, server_default=func.now())
     estado = Column(Enum('generado', 'activo', 'archivado'), default='generado')
-    
+    turno = Column(String(20), default='matutino')
+
     asignaciones = relationship("Asignacion", back_populates="horario", cascade="all, delete-orphan")
 
 class Asignacion(Base):

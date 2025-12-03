@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import './MaestrosUpload.css'
 
 const API_URL = 'http://localhost:8000'
 
@@ -35,6 +36,8 @@ function MaestrosUpload({ onUploadSuccess }) {
             if (response.ok) {
                 setMessage(`✅ ${data.message}`)
                 setFile(null)
+                // Reset file input
+                document.getElementById('csv-file-input').value = ''
                 if (onUploadSuccess) onUploadSuccess()
             } else {
                 setMessage(`❌ Error: ${data.detail}`)
@@ -50,18 +53,19 @@ function MaestrosUpload({ onUploadSuccess }) {
         <div className="upload-container">
             <div className="file-input-wrapper">
                 <input
+                    id="csv-file-input"
                     type="file"
                     accept=".csv"
                     onChange={handleFileChange}
                     disabled={loading}
                 />
-                {file && <span className="file-name">{file.name}</span>}
+                {file && <span className="file-name">📄 {file.name}</span>}
             </div>
 
             <button
                 onClick={handleUpload}
                 disabled={loading || !file}
-                className="btn-primary"
+                className="btn-upload"
             >
                 {loading ? '⏳ Cargando...' : '📤 Cargar CSV'}
             </button>

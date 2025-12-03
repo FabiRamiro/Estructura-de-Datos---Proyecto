@@ -1,45 +1,26 @@
-import { useState } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import './App.css'
-import MaestrosUpload from './components/MaestrosUpload'
-import MaestrosList from './components/MaestrosList'
-import GenerarHorario from './components/GenerarHorario'
-import HorarioView from './components/HorarioView'
+import Navbar from './components/Navbar'
+import Inicio from './pages/Inicio'
+import Docentes from './pages/Docentes'
+import Materias from './pages/Materias'
+import GenerarHorario from './pages/GenerarHorario'
+import ConsultarHorario from './pages/ConsultarHorario'
 
 function App() {
-  const [maestrosCount, setMaestrosCount] = useState(0)
-  const [horarioId, setHorarioId] = useState(null)
-
   return (
-    <div className="App">
-      <header className="app-header">
-        <h1>🎓 Generador de Horarios Universitarios</h1>
-        <p>Sistema de generación automática de horarios con Cython</p>
-      </header>
-
-      <div className="container">
-        <div className="section">
-          <h2>📤 Cargar Maestros desde CSV</h2>
-          <MaestrosUpload onUploadSuccess={() => setMaestrosCount(maestrosCount + 1)} />
-        </div>
-
-        <div className="section">
-          <h2>👨‍🏫 Maestros Registrados</h2>
-          <MaestrosList key={maestrosCount} />
-        </div>
-
-        <div className="section">
-          <h2>⚡ Generar Horario</h2>
-          <GenerarHorario onHorarioGenerado={(id) => setHorarioId(id)} />
-        </div>
-
-        {horarioId && (
-          <div className="section">
-            <h2>📅 Horario Generado</h2>
-            <HorarioView horarioId={horarioId} />
-          </div>
-        )}
+    <Router>
+      <div className="App">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Inicio />} />
+          <Route path="/docentes" element={<Docentes />} />
+          <Route path="/materias" element={<Materias />} />
+          <Route path="/generar-horario" element={<GenerarHorario />} />
+          <Route path="/consultar-horario" element={<ConsultarHorario />} />
+        </Routes>
       </div>
-    </div>
+    </Router>
   )
 }
 

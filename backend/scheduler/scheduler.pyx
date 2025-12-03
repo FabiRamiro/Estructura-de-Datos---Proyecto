@@ -22,17 +22,21 @@ cdef class SchedulerEngine:
     cdef int num_grupos
     cdef int[5][13][100] ocupacion_maestros  # [dia][hora][maestro_id] = 1 si ocupado
     cdef int[5][13][100] ocupacion_grupos     # [dia][hora][grupo_id] = 1 si ocupado
-    
-    def __init__(self, int maestros, int materias, int grupos):
+    cdef int hora_min
+    cdef int hora_max
+
+    def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=19):
         """Inicializa el motor de scheduling"""
         self.num_maestros = maestros
         self.num_materias = materias
         self.num_grupos = grupos
-        
+        self.hora_min = hora_min
+        self.hora_max = hora_max
+
         # Inicializar matrices en 0
         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
-        
+
         # Inicializar semilla random
         srand(time(NULL))
     
@@ -158,12 +162,12 @@ cdef class SchedulerEngine:
                                 break
                             
                             # Intentar diferentes horas del día
-                            for hora_inicio in range(7, 19):  # 7am a 7pm
+                            for hora_inicio in range(self.hora_min, self.hora_max):
                                 # Determinar duración (1 o 2 horas)
                                 duracion = min(2, horas_restantes)
                                 hora_fin = hora_inicio + duracion
-                                
-                                if hora_fin > 19:
+
+                                if hora_fin > self.hora_max:
                                     continue
                                 
                                 # Validar restricciones
