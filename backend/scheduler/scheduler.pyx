@@ -6,13 +6,18 @@ from libc.string cimport memset
 from libc.time cimport time
 import random
 
+# Constantes
+DEF MAX_MATERIAS = 7           # Máximo de materias diferentes por grupo
+DEF MAX_HORAS_DIA = 8          # Máximo de horas de clase por día
+DEF DIAS_SEMANA = 5            # Lunes a Viernes
+
 # Estructura para representar una asignación
 cdef struct Asignacion:
     int maestro_id
     int materia_id
     int grupo_id
     int dia_semana      # 0-4 (Lunes a Viernes)
-    int hora_inicio     # 7-19
+    int hora_inicio     # 7-21
     int hora_fin
 
 # Clase principal del motor de scheduling
@@ -20,12 +25,13 @@ cdef class SchedulerEngine:
     cdef int num_maestros
     cdef int num_materias
     cdef int num_grupos
-    cdef int[5][13][100] ocupacion_maestros  # [dia][hora][maestro_id] = 1 si ocupado
-    cdef int[5][13][100] ocupacion_grupos     # [dia][hora][grupo_id] = 1 si ocupado
+    cdef int[5][14][100] ocupacion_maestros  # [dia][hora_slot][maestro_id] = 1 si ocupado
+    cdef int[5][14][100] ocupacion_grupos    # [dia][hora_slot][grupo_id] = 1 si ocupado
+    cdef int[100][5] horas_maestro_dia       # [maestro_id][dia] = horas usadas ese día
     cdef int hora_min
     cdef int hora_max
 
-    def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=19):
+    def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=15):
         """Inicializa el motor de scheduling"""
         self.num_maestros = maestros
         self.num_materias = materias
@@ -36,101 +42,79 @@ cdef class SchedulerEngine:
         # Inicializar matrices en 0
         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
+        memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))
 
         # Inicializar semilla random
         srand(time(NULL))
     
     cdef bint validar_disponibilidad_maestro(self, int maestro_id, int dia, int hora_inicio, int hora_fin):
-        """Valida que el maestro esté disponible en el horario"""
+        """Valida que el maestro esté disponible en el horario (no empalmes)"""
         cdef int hora
         for hora in range(hora_inicio, hora_fin):
-            if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
-                return False
+            if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+                if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:
+                    return False
         return True
     
     cdef bint validar_disponibilidad_grupo(self, int grupo_id, int dia, int hora_inicio, int hora_fin):
-        """Valida que el grupo esté disponible en el horario"""
+        """Valida que el grupo esté disponible en el horario (no empalmes)"""
         cdef int hora
         for hora in range(hora_inicio, hora_fin):
-            if self.ocupacion_grupos[dia][hora - 7][grupo_id] == 1:
-                return False
+            if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+                if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:
+                    return False
         return True
     
-    cdef int contar_horas_seguidas(self, int maestro_id, int dia, int hora_inicio):
-        """Cuenta cuántas horas seguidas tiene el maestro antes de esta hora"""
+    cdef int contar_horas_grupo_dia(self, int grupo_id, int dia):
+        """Cuenta cuántas horas tiene el grupo asignadas en un día"""
         cdef int contador = 0
-        cdef int hora = hora_inicio - 1
-        
-        while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
-            contador += 1
-            hora -= 1
-        
+        cdef int hora
+        for hora in range(14):  # 14 slots posibles
+            if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+                contador += 1
         return contador
     
-    cdef int contar_horas_libres(self, int maestro_id, int dia, int hora_inicio):
-        """Cuenta horas libres consecutivas antes de esta hora"""
-        cdef int contador = 0
-        cdef int hora = hora_inicio - 1
-        cdef bint tiene_clases_antes = False
+    cdef int obtener_siguiente_hora_libre(self, int grupo_id, int dia):
+        """Obtiene la siguiente hora libre continua para el grupo en ese día"""
+        cdef int hora
+        cdef int primera_ocupada = -1
+        cdef int ultima_ocupada = -1
         
-        # Verificar si tiene clases antes en el día
-        for hora in range(7, hora_inicio):
-            if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
-                tiene_clases_antes = True
-                break
+        # Encontrar primera y última hora ocupada
+        for hora in range(14):
+            if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+                if primera_ocupada == -1:
+                    primera_ocupada = hora
+                ultima_ocupada = hora
         
-        if not tiene_clases_antes:
-            return 0
+        # Si no hay horas ocupadas, empezar desde el inicio
+        if primera_ocupada == -1:
+            return self.hora_min
         
-        # Contar horas libres consecutivas
-        hora = hora_inicio - 1
-        while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 0:
-            contador += 1
-            hora -= 1
-        
-        return contador
-    
-    cdef bint validar_restricciones(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
-        """Valida todas las restricciones del problema"""
-        
-        # 1. Validar disponibilidad de maestro y grupo
-        if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_inicio, hora_fin):
-            return False
-        
-        if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_inicio, hora_fin):
-            return False
-        
-        # 2. No más de 3 horas seguidas
-        cdef int horas_seguidas = self.contar_horas_seguidas(maestro_id, dia, hora_inicio)
-        cdef int duracion = hora_fin - hora_inicio
-        
-        if horas_seguidas + duracion > 3:
-            return False
-        
-        # 3. No más de 2 horas libres seguidas
-        cdef int horas_libres = self.contar_horas_libres(maestro_id, dia, hora_inicio)
-        if horas_libres > 2:
-            return False
-        
-        return True
+        # Retornar la siguiente hora después de la última ocupada
+        return self.hora_min + ultima_ocupada + 1
     
     cdef void marcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
         """Marca las horas como ocupadas para maestro y grupo"""
         cdef int hora
+        cdef int duracion = hora_fin - hora_inicio
         for hora in range(hora_inicio, hora_fin):
-            self.ocupacion_maestros[dia][hora - 7][maestro_id] = 1
-            self.ocupacion_grupos[dia][hora - 7][grupo_id] = 1
-    
-    cdef void desmarcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
-        """Desmarca las horas como ocupadas (para backtracking)"""
-        cdef int hora
-        for hora in range(hora_inicio, hora_fin):
-            self.ocupacion_maestros[dia][hora - 7][maestro_id] = 0
-            self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0
+            if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+                self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
+                self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
+        # Actualizar contador de horas del maestro en ese día
+        if maestro_id < 100:
+            self.horas_maestro_dia[maestro_id][dia] += duracion
     
     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):
         """
-        Genera el horario completo usando backtracking
+        Genera el horario completo distribuyendo materias de forma inteligente:
+        - Máximo 7 materias diferentes por grupo
+        - Distribuye las horas de cada materia en DIFERENTES días (no todo en un día)
+        - Cada día tiene múltiples materias (similar a un horario universitario real)
+        - Un maestro solo puede dar UNA materia a cada grupo
+        - Sin empalmes de horarios
+        - Bloques de 1 hora para mejor distribución
         
         Args:
             maestros_data: Lista de diccionarios con info de maestros
@@ -141,67 +125,219 @@ cdef class SchedulerEngine:
             Lista de asignaciones generadas
         """
         cdef list asignaciones = []
+        cdef int max_horas_dia = MAX_HORAS_DIA
+        cdef int max_materias = MAX_MATERIAS
         
-        # Para cada materia y grupo, intentar asignar un maestro
-        for materia in materias_data:
-            for grupo in grupos_data:
-                horas_restantes = materia['horas_semanales']
+        # Limitar a máximo 7 materias
+        materias_a_usar = materias_data[:max_materias] if len(materias_data) > max_materias else materias_data
+        
+        # Crear índice de maestros por materia
+        maestros_por_materia = {}
+        for maestro in maestros_data:
+            materias_maestro = maestro.get('materias_ids', [])
+            for materia_id in materias_maestro:
+                if materia_id not in maestros_por_materia:
+                    maestros_por_materia[materia_id] = []
+                maestros_por_materia[materia_id].append(maestro)
+        
+        # Mezclar para distribuir carga
+        for materia_id in maestros_por_materia:
+            random.shuffle(maestros_por_materia[materia_id])
+        
+        # Para cada grupo
+        for grupo in grupos_data:
+            grupo_id = grupo['id']
+            
+            # Diccionario para trackear qué maestro da qué materia a este grupo
+            maestro_por_materia_grupo = {}  # materia_id -> maestro
+            materias_maestro_grupo = {}     # maestro_id -> materia_id (un maestro solo da una materia)
+            
+            # Primero, asignar un maestro a cada materia
+            for materia in materias_a_usar:
+                materia_id = materia['id']
                 
-                # Intentar asignar las horas de la materia
-                while horas_restantes > 0:
-                    asignado = False
-                    
-                    # Intentar con cada maestro
-                    for maestro in maestros_data:
-                        if asignado:
-                            break
-                        
-                        # Intentar cada día de la semana
-                        for dia in range(5):  # Lunes a Viernes
-                            if asignado:
-                                break
-                            
-                            # Intentar diferentes horas del día
-                            for hora_inicio in range(self.hora_min, self.hora_max):
-                                # Determinar duración (1 o 2 horas)
-                                duracion = min(2, horas_restantes)
-                                hora_fin = hora_inicio + duracion
-
-                                if hora_fin > self.hora_max:
-                                    continue
-                                
-                                # Validar restricciones
-                                if self.validar_restricciones(
-                                    maestro['id'], 
-                                    grupo['id'], 
-                                    dia, 
-                                    hora_inicio, 
-                                    hora_fin
-                                ):
-                                    # Asignar
-                                    self.marcar_ocupado(
-                                        maestro['id'], 
-                                        grupo['id'], 
-                                        dia, 
-                                        hora_inicio, 
-                                        hora_fin
-                                    )
-                                    
-                                    asignaciones.append({
-                                        'maestro_id': maestro['id'],
-                                        'materia_id': materia['id'],
-                                        'grupo_id': grupo['id'],
-                                        'dia_semana': dia,
-                                        'hora_inicio': hora_inicio,
-                                        'hora_fin': hora_fin
-                                    })
-                                    
-                                    horas_restantes -= duracion
-                                    asignado = True
-                                    break
-                    
-                    # Si no se pudo asignar, salir del loop
-                    if not asignado:
+                if materia_id not in maestros_por_materia:
+                    continue
+                
+                # Buscar un maestro que no esté dando otra materia a este grupo
+                for m in maestros_por_materia[materia_id]:
+                    if m['id'] not in materias_maestro_grupo:
+                        maestro_por_materia_grupo[materia_id] = m
+                        materias_maestro_grupo[m['id']] = materia_id
                         break
+            
+            # Crear lista de materias con sus horas semanales
+            materias_con_horas = []
+            for materia in materias_a_usar:
+                materia_id = materia['id']
+                if materia_id not in maestro_por_materia_grupo:
+                    continue
+                horas_semanales = materia['horas_semanales']
+                materias_con_horas.append({
+                    'id': materia_id,
+                    'horas': horas_semanales
+                })
+            
+            # ESTRATEGIA REALISTA (como horario universitario real):
+            # - Horario de 7am a 2pm = 7 horas por día
+            # - Cada materia se repite en múltiples días
+            # - SOLO 1 materia por día puede tener 2 horas continuas
+            # - Las demás son de 1 hora
+            
+            # Calcular horas totales disponibles por semana (7 horas x 5 días = 35)
+            horas_disponibles_dia = self.hora_max - self.hora_min  # 14 - 7 = 7 horas
+            
+            # Calcular total de horas de todas las materias
+            total_horas_materias = 0
+            for m in materias_con_horas:
+                total_horas_materias += m['horas']
+            
+            # Crear sesiones: distribuir materias en los días
+            # Primero asignar 1 hora por día a cada materia (hasta completar sus horas)
+            sesiones_por_dia = [[] for _ in range(DIAS_SEMANA)]  # Lista de (materia_id, duracion)
+            horas_por_dia = [0] * DIAS_SEMANA
+            materia_doble_dia = [-1] * DIAS_SEMANA  # Qué materia tiene 2 horas ese día (-1 = ninguna)
+            
+            # Ordenar materias por horas (más horas primero)
+            for i in range(len(materias_con_horas)):
+                for j in range(i + 1, len(materias_con_horas)):
+                    if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:
+                        materias_con_horas[i], materias_con_horas[j] = materias_con_horas[j], materias_con_horas[i]
+            
+            # Primera pasada: asignar 1 hora por día a cada materia
+            for materia_info in materias_con_horas:
+                materia_id = materia_info['id']
+                horas_restantes = materia_info['horas']
+                dias_asignados = set()
+                
+                while horas_restantes > 0:
+                    mejor_dia = -1
+                    menor_carga = horas_disponibles_dia + 1
+                    
+                    # Buscar día sin esta materia y con menos carga
+                    for d in range(DIAS_SEMANA):
+                        if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:
+                            if horas_por_dia[d] < menor_carga:
+                                menor_carga = horas_por_dia[d]
+                                mejor_dia = d
+                    
+                    # Si todos los días tienen esta materia, permitir repetir
+                    if mejor_dia == -1:
+                        for d in range(DIAS_SEMANA):
+                            if horas_por_dia[d] < horas_disponibles_dia:
+                                if horas_por_dia[d] < menor_carga:
+                                    menor_carga = horas_por_dia[d]
+                                    mejor_dia = d
+                    
+                    if mejor_dia != -1:
+                        sesiones_por_dia[mejor_dia].append((materia_id, 1))
+                        horas_por_dia[mejor_dia] += 1
+                        dias_asignados.add(mejor_dia)
+                        horas_restantes -= 1
+                    else:
+                        break
+            
+            # Segunda pasada: si algún día no llega a 7 horas, agregar más sesiones
+            # Primero convertir UNA materia a 2 horas, luego agregar materias extra
+            for dia in range(DIAS_SEMANA):
+                # Paso 1: Convertir una materia a 2 horas si es necesario
+                if horas_por_dia[dia] < horas_disponibles_dia and materia_doble_dia[dia] == -1:
+                    for idx in range(len(sesiones_por_dia[dia])):
+                        mid, dur = sesiones_por_dia[dia][idx]
+                        if dur == 1:
+                            sesiones_por_dia[dia][idx] = (mid, 2)
+                            horas_por_dia[dia] += 1
+                            materia_doble_dia[dia] = mid
+                            break
+                
+                # Paso 2: Agregar más materias hasta llenar el día
+                while horas_por_dia[dia] < horas_disponibles_dia:
+                    agregada = False
+                    
+                    # Primero intentar materias que no estén en este día
+                    for materia_info in materias_con_horas:
+                        mid = materia_info['id']
+                        ya_en_dia = False
+                        for existing_mid, _ in sesiones_por_dia[dia]:
+                            if existing_mid == mid:
+                                ya_en_dia = True
+                                break
+                        
+                        if not ya_en_dia:
+                            sesiones_por_dia[dia].append((mid, 1))
+                            horas_por_dia[dia] += 1
+                            agregada = True
+                            break
+                    
+                    # Si todas ya están, repetir cualquier materia
+                    if not agregada:
+                        if len(materias_con_horas) > 0:
+                            # Rotar por las materias para no repetir siempre la misma
+                            idx_materia = horas_por_dia[dia] % len(materias_con_horas)
+                            mid = materias_con_horas[idx_materia]['id']
+                            sesiones_por_dia[dia].append((mid, 1))
+                            horas_por_dia[dia] += 1
+                        else:
+                            break
+            
+            # Copiar a bloques_por_dia
+            bloques_por_dia = []
+            for dia in range(DIAS_SEMANA):
+                bloques_por_dia.append(sesiones_por_dia[dia][:])
+            
+            # Ahora asignar las sesiones (bloques continuos) por día
+            for dia in range(DIAS_SEMANA):
+                hora_actual = self.hora_min
+                
+                # Mezclar las sesiones del día para variar el orden
+                sesiones_dia = bloques_por_dia[dia][:]
+                random.shuffle(sesiones_dia)
+                
+                for materia_id, duracion in sesiones_dia:
+                    if hora_actual + duracion > self.hora_max:
+                        break
+                    
+                    maestro = maestro_por_materia_grupo.get(materia_id)
+                    if not maestro:
+                        continue
+                    
+                    maestro_id = maestro['id']
+                    dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
+                    horas_max_maestro = maestro.get('horas_max_dia', 8)
+                    
+                    # Verificar si el maestro puede dar clase este día
+                    if dia not in dias_disponibles:
+                        continue
+                    
+                    # Verificar horas máximas del maestro en este día
+                    horas_usadas = 0
+                    if maestro_id < 100:
+                        horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+                    if horas_usadas + duracion > horas_max_maestro:
+                        continue
+                    
+                    hora_fin = hora_actual + duracion
+                    
+                    # Verificar disponibilidad del maestro (sin empalmes) para todo el bloque
+                    if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_actual, hora_fin):
+                        continue
+                    
+                    # Verificar disponibilidad del grupo para todo el bloque
+                    if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_actual, hora_fin):
+                        continue
+                    
+                    # Realizar la asignación del bloque completo
+                    self.marcar_ocupado(maestro_id, grupo_id, dia, hora_actual, hora_fin)
+                    
+                    asignaciones.append({
+                        'maestro_id': maestro_id,
+                        'materia_id': materia_id,
+                        'grupo_id': grupo_id,
+                        'dia_semana': dia,
+                        'hora_inicio': hora_actual,
+                        'hora_fin': hora_fin
+                    })
+                    
+                    hora_actual = hora_fin
         
         return asignaciones

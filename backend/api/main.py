@@ -10,7 +10,15 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scheduler"))
 
 from database.connection import get_db, engine, Base
-from database.models import Maestro, Materia, Grupo, HorarioGenerado, Asignacion, MaestroMateria, DisponibilidadMaestro
+from database.models import (
+    Maestro,
+    Materia,
+    Grupo,
+    HorarioGenerado,
+    Asignacion,
+    MaestroMateria,
+    DisponibilidadMaestro,
+)
 
 # Crear tablas si no existen
 Base.metadata.create_all(bind=engine)
@@ -101,15 +109,21 @@ def get_maestros(db: Session = Depends(get_db)):
                 "id": m.id,
                 "nombre": m.nombre,
                 "email": m.email,
-                "numero": m.numero if hasattr(m, 'numero') else "",
+                "numero": m.numero if hasattr(m, "numero") else "",
                 "horas_max_dia": m.horas_max_dia,
-                "materias": [
-                    {"id": mm.materia_id, "nombre": mm.materia.nombre}
-                    for mm in m.materias
-                ] if hasattr(m, 'materias') else [],
-                "dias_disponibles": [
-                    d.dia_semana for d in m.disponibilidades
-                ] if hasattr(m, 'disponibilidades') else [],
+                "materias": (
+                    [
+                        {"id": mm.materia_id, "nombre": mm.materia.nombre}
+                        for mm in m.materias
+                    ]
+                    if hasattr(m, "materias")
+                    else []
+                ),
+                "dias_disponibles": (
+                    [d.dia_semana for d in m.disponibilidades]
+                    if hasattr(m, "disponibilidades")
+                    else []
+                ),
             }
             for m in maestros
         ],
@@ -153,18 +167,14 @@ def crear_maestro(maestro_data: MaestroCreate, db: Session = Depends(get_db)):
         # Agregar materias que puede impartir
         for materia_id in maestro_data.materia_ids:
             maestro_materia = MaestroMateria(
-                maestro_id=maestro.id,
-                materia_id=materia_id
+                maestro_id=maestro.id, materia_id=materia_id
             )
             db.add(maestro_materia)
 
         # Agregar días disponibles (disponibilidad de 7am a 7pm por defecto)
         for dia in maestro_data.dias_disponibles:
             disponibilidad = DisponibilidadMaestro(
-                maestro_id=maestro.id,
-                dia_semana=dia,
-                hora_inicio=7,
-                hora_fin=19
+                maestro_id=maestro.id, dia_semana=dia, hora_inicio=7, hora_fin=19
             )
             db.add(disponibilidad)
 
@@ -188,7 +198,9 @@ def crear_maestro(maestro_data: MaestroCreate, db: Session = Depends(get_db)):
 
 
 @app.put("/api/maestros/{maestro_id}")
-def actualizar_maestro(maestro_id: int, maestro_data: MaestroCreate, db: Session = Depends(get_db)):
+def actualizar_maestro(
+    maestro_id: int, maestro_data: MaestroCreate, db: Session = Depends(get_db)
+):
     """Actualiza un maestro existente"""
     try:
         maestro = db.query(Maestro).filter(Maestro.id == maestro_id).first()
@@ -202,26 +214,26 @@ def actualizar_maestro(maestro_id: int, maestro_data: MaestroCreate, db: Session
         maestro.horas_max_dia = maestro_data.horas_max_dia
 
         # Eliminar materias anteriores
-        db.query(MaestroMateria).filter(MaestroMateria.maestro_id == maestro_id).delete()
+        db.query(MaestroMateria).filter(
+            MaestroMateria.maestro_id == maestro_id
+        ).delete()
 
         # Agregar nuevas materias
         for materia_id in maestro_data.materia_ids:
             maestro_materia = MaestroMateria(
-                maestro_id=maestro_id,
-                materia_id=materia_id
+                maestro_id=maestro_id, materia_id=materia_id
             )
             db.add(maestro_materia)
 
         # Eliminar disponibilidades anteriores
-        db.query(DisponibilidadMaestro).filter(DisponibilidadMaestro.maestro_id == maestro_id).delete()
+        db.query(DisponibilidadMaestro).filter(
+            DisponibilidadMaestro.maestro_id == maestro_id
+        ).delete()
 
         # Agregar nuevas disponibilidades
         for dia in maestro_data.dias_disponibles:
             disponibilidad = DisponibilidadMaestro(
-                maestro_id=maestro_id,
-                dia_semana=dia,
-                hora_inicio=7,
-                hora_fin=19
+                maestro_id=maestro_id, dia_semana=dia, hora_inicio=7, hora_fin=19
             )
             db.add(disponibilidad)
 
@@ -242,7 +254,9 @@ def actualizar_maestro(maestro_id: int, maestro_data: MaestroCreate, db: Session
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al actualizar maestro: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al actualizar maestro: {str(e)}"
+        )
 
 
 @app.delete("/api/maestros/{maestro_id}")
@@ -261,7 +275,9 @@ def eliminar_maestro(maestro_id: int, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al eliminar maestro: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar maestro: {str(e)}"
+        )
 
 
 @app.post("/api/materias")
@@ -270,7 +286,7 @@ def crear_materia(materia_data: MateriaCreate, db: Session = Depends(get_db)):
     try:
         materia = Materia(
             nombre=materia_data.nombre.strip(),
-            horas_semanales=materia_data.horas_semanales
+            horas_semanales=materia_data.horas_semanales,
         )
         db.add(materia)
         db.commit()
@@ -281,7 +297,7 @@ def crear_materia(materia_data: MateriaCreate, db: Session = Depends(get_db)):
                 "id": materia.id,
                 "nombre": materia.nombre,
                 "horas_semanales": materia.horas_semanales,
-            }
+            },
         }
     except Exception as e:
         db.rollback()
@@ -302,7 +318,9 @@ def get_materias(db: Session = Depends(get_db)):
 
 
 @app.put("/api/materias/{materia_id}")
-def actualizar_materia(materia_id: int, materia_data: MateriaCreate, db: Session = Depends(get_db)):
+def actualizar_materia(
+    materia_id: int, materia_data: MateriaCreate, db: Session = Depends(get_db)
+):
     """Actualiza una materia existente"""
     try:
         materia = db.query(Materia).filter(Materia.id == materia_id).first()
@@ -327,7 +345,9 @@ def actualizar_materia(materia_id: int, materia_data: MateriaCreate, db: Session
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al actualizar materia: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al actualizar materia: {str(e)}"
+        )
 
 
 @app.delete("/api/materias/{materia_id}")
@@ -346,7 +366,9 @@ def eliminar_materia(materia_id: int, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error al eliminar materia: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar materia: {str(e)}"
+        )
 
 
 @app.post("/api/grupos")
@@ -371,36 +393,74 @@ def get_grupos(db: Session = Depends(get_db)):
     }
 
 
+# Modelo para generar horario
+class GenerarHorarioRequest(BaseModel):
+    maestro_ids: list[int]
+    grupos_generar: int = 1
+    turno: str = "matutino"
+    nombre_carrera: str
+    cuatrimestre: str
+
+
 @app.post("/api/generar-horario")
 def generar_horario(
-    grupos_generar: int = 1,
-    turno: str = "matutino",
-    nombre_carrera: str = "",
-    cuatrimestre: str = "",
+    request: GenerarHorarioRequest,
     db: Session = Depends(get_db),
 ):
     """
     Genera horarios para múltiples grupos con nombres dinámicos
     Formato: NOMBRE_CARRERA CUATRIMESTRE-N (ej: ITIID 5-1, ITIID 5-2)
-    Elimina los horarios y grupos anteriores antes de crear nuevos
+
+    Considera:
+    - Solo los docentes seleccionados
+    - Las materias que cada docente puede impartir
+    - Las horas máximas por día de cada docente
+    - Los días disponibles de cada docente
     """
     try:
         # Importar el módulo Cython compilado
         import scheduler
 
-        # Obtener datos de la base de datos
-        maestros = db.query(Maestro).all()
-        materias = db.query(Materia).all()
+        # Extraer datos del request
+        maestro_ids = request.maestro_ids
+        grupos_generar = request.grupos_generar
+        turno = request.turno
+        nombre_carrera = request.nombre_carrera
+        cuatrimestre = request.cuatrimestre
 
-        if not maestros:
-            raise HTTPException(status_code=400, detail="No hay maestros registrados")
-        if not materias:
-            raise HTTPException(status_code=400, detail="No hay materias registradas")
+        # Validaciones
+        if not maestro_ids:
+            raise HTTPException(
+                status_code=400, detail="Debe seleccionar al menos un docente"
+            )
         if not nombre_carrera or not cuatrimestre:
             raise HTTPException(
                 status_code=400,
                 detail="Debe proporcionar nombre de carrera y cuatrimestre",
             )
+
+        # Obtener solo los maestros seleccionados con sus datos completos
+        maestros = db.query(Maestro).filter(Maestro.id.in_(maestro_ids)).all()
+
+        if not maestros:
+            raise HTTPException(
+                status_code=400, detail="No se encontraron los docentes seleccionados"
+            )
+
+        # Obtener las materias que pueden impartir los maestros seleccionados
+        # Solo materias que al menos un maestro puede dar
+        materias_ids = set()
+        for maestro in maestros:
+            for mm in maestro.materias:
+                materias_ids.add(mm.materia_id)
+
+        if not materias_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Los docentes seleccionados no tienen materias asignadas. Asigne materias a los docentes primero.",
+            )
+
+        materias = db.query(Materia).filter(Materia.id.in_(materias_ids)).all()
 
         # ELIMINAR TODOS LOS HORARIOS Y GRUPOS ANTERIORES
         db.query(Asignacion).delete()
@@ -408,8 +468,30 @@ def generar_horario(
         db.query(Grupo).delete()
         db.commit()
 
-        # Preparar datos para el motor
-        maestros_data = [{"id": m.id, "nombre": m.nombre} for m in maestros]
+        # Preparar datos de maestros con toda su información
+        maestros_data = []
+        for m in maestros:
+            # Obtener IDs de materias que puede impartir
+            materias_puede_impartir = [mm.materia_id for mm in m.materias]
+
+            # Obtener días disponibles
+            dias_disponibles = [d.dia_semana for d in m.disponibilidades]
+
+            # Si no tiene días configurados, usar todos los días
+            if not dias_disponibles:
+                dias_disponibles = [0, 1, 2, 3, 4]  # Lunes a Viernes
+
+            maestros_data.append(
+                {
+                    "id": m.id,
+                    "nombre": m.nombre,
+                    "horas_max_dia": m.horas_max_dia,
+                    "materias_ids": materias_puede_impartir,
+                    "dias_disponibles": dias_disponibles,
+                }
+            )
+
+        # Preparar datos de materias
         materias_data = [
             {"id": m.id, "nombre": m.nombre, "horas_semanales": m.horas_semanales}
             for m in materias
@@ -420,9 +502,9 @@ def generar_horario(
 
         # Determinar horas según el turno
         if turno.lower() == "matutino":
-            hora_min, hora_max = 7, 14
+            hora_min, hora_max = 7, 14  # 7:00 AM a 2:00 PM (7 horas)
         else:  # vespertino
-            hora_min, hora_max = 14, 21
+            hora_min, hora_max = 14, 22  # 2:00 PM a 10:00 PM (8 horas)
 
         # GENERAR UN HORARIO POR CADA GRUPO CON NOMBRE DINÁMICO
         for grupo_num in range(1, grupos_generar + 1):
@@ -526,7 +608,7 @@ def get_horarios(db: Session = Depends(get_db)):
                 "id": h.id,
                 "fecha_generacion": h.fecha_generacion,
                 "estado": h.estado,
-                "turno": h.turno if hasattr(h, 'turno') else 'matutino',
+                "turno": h.turno if hasattr(h, "turno") else "matutino",
                 "total_asignaciones": len(h.asignaciones),
             }
             for h in horarios
@@ -570,7 +652,7 @@ def get_horario(horario_id: int, db: Session = Depends(get_db)):
         "id": horario.id,
         "fecha_generacion": horario.fecha_generacion,
         "estado": horario.estado,
-        "turno": horario.turno if hasattr(horario, 'turno') else 'matutino',
+        "turno": horario.turno if hasattr(horario, "turno") else "matutino",
         "asignaciones": [
             {
                 "id": a.id,

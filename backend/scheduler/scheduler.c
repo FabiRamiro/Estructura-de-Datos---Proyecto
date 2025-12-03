@@ -1523,7 +1523,7 @@ static const char* const __pyx_f[] = {
 struct __pyx_obj_9scheduler_SchedulerEngine;
 struct __pyx_t_9scheduler_Asignacion;
 
-/* "scheduler.pyx":10
+/* "scheduler.pyx":15
  * 
  * # Estructura para representar una asignacin
  * cdef struct Asignacion:             # <<<<<<<<<<<<<<
@@ -1539,7 +1539,7 @@ struct __pyx_t_9scheduler_Asignacion {
   int hora_fin;
 };
 
-/* "scheduler.pyx":19
+/* "scheduler.pyx":24
  * 
  * # Clase principal del motor de scheduling
  * cdef class SchedulerEngine:             # <<<<<<<<<<<<<<
@@ -1552,8 +1552,9 @@ struct __pyx_obj_9scheduler_SchedulerEngine {
   int num_maestros;
   int num_materias;
   int num_grupos;
-  int ocupacion_maestros[5][13][100];
-  int ocupacion_grupos[5][13][100];
+  int ocupacion_maestros[5][14][100];
+  int ocupacion_grupos[5][14][100];
+  int horas_maestro_dia[100][5];
   int hora_min;
   int hora_max;
 };
@@ -1563,11 +1564,9 @@ struct __pyx_obj_9scheduler_SchedulerEngine {
 struct __pyx_vtabstruct_9scheduler_SchedulerEngine {
   int (*validar_disponibilidad_maestro)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int);
   int (*validar_disponibilidad_grupo)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int);
-  int (*contar_horas_seguidas)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int);
-  int (*contar_horas_libres)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int);
-  int (*validar_restricciones)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int, int);
+  int (*contar_horas_grupo_dia)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int);
+  int (*obtener_siguiente_hora_libre)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int);
   void (*marcar_ocupado)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int, int);
-  void (*desmarcar_ocupado)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int, int);
   PyObject *(*generar_horario)(struct __pyx_obj_9scheduler_SchedulerEngine *, PyObject *, PyObject *, PyObject *, int __pyx_skip_dispatch);
 };
 static struct __pyx_vtabstruct_9scheduler_SchedulerEngine *__pyx_vtabptr_9scheduler_SchedulerEngine;
@@ -1982,23 +1981,29 @@ static CYTHON_INLINE int __Pyx_object_dict_version_matches(PyObject* obj, PY_UIN
 /* RaiseUnexpectedTypeError.proto */
 static int __Pyx_RaiseUnexpectedTypeError(const char *expected, PyObject *obj);
 
-/* DictGetItem.proto */
-#if !CYTHON_COMPILING_IN_PYPY
-static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key);
-#define __Pyx_PyObject_Dict_GetItem(obj, name)\
-    (likely(PyDict_CheckExact(obj)) ?\
-     __Pyx_PyDict_GetItem(obj, name) : PyObject_GetItem(obj, name))
+/* SliceTupleAndList.proto */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_PyList_GetSlice(PyObject* src, Py_ssize_t start, Py_ssize_t stop);
+static CYTHON_INLINE PyObject* __Pyx_PyTuple_GetSlice(PyObject* src, Py_ssize_t start, Py_ssize_t stop);
 #else
-#define __Pyx_PyDict_GetItem(d, key) PyObject_GetItem(d, key)
-#define __Pyx_PyObject_Dict_GetItem(obj, name)  PyObject_GetItem(obj, name)
+#define __Pyx_PyList_GetSlice(seq, start, stop)   PySequence_GetSlice(seq, start, stop)
+#define __Pyx_PyTuple_GetSlice(seq, start, stop)  PySequence_GetSlice(seq, start, stop)
 #endif
 
-/* PyRange_Check.proto */
-#if CYTHON_COMPILING_IN_PYPY && !defined(PyRange_Check)
-  #define PyRange_Check(obj)  __Pyx_TypeCheck((obj), &PyRange_Type)
+/* PyObjectFastCallMethod.proto */
+#if CYTHON_VECTORCALL && PY_VERSION_HEX >= 0x03090000
+#define __Pyx_PyObject_FastCallMethod(name, args, nargsf) PyObject_VectorcallMethod(name, args, nargsf, NULL)
+#else
+static PyObject *__Pyx_PyObject_FastCallMethod(PyObject *name, PyObject *const *args, size_t nargsf);
 #endif
 
-/* ListAppend.proto */
+/* PyDictContains.proto */
+static CYTHON_INLINE int __Pyx_PyDict_ContainsTF(PyObject* item, PyObject* dict, int eq) {
+    int result = PyDict_Contains(dict, item);
+    return unlikely(result < 0) ? result : (result == (eq == Py_EQ));
+}
+
+/* ListAppend.proto (used by append) */
 #if CYTHON_USE_PYLIST_INTERNALS && CYTHON_ASSUME_SAFE_MACROS
 static CYTHON_INLINE int __Pyx_PyList_Append(PyObject* list, PyObject* x) {
     PyListObject* L = (PyListObject*) list;
@@ -2019,19 +2024,68 @@ static CYTHON_INLINE int __Pyx_PyList_Append(PyObject* list, PyObject* x) {
 #define __Pyx_PyList_Append(L,x) PyList_Append(L,x)
 #endif
 
-/* ArgTypeTestFunc.export */
-static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact);
+/* PyObjectCall2Args.proto (used by PyObjectCallMethod1) */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_Call2Args(PyObject* function, PyObject* arg1, PyObject* arg2);
 
-/* ArgTypeTest.proto */
-#define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
-    ((likely(__Pyx_IS_TYPE(obj, type) | (none_allowed && (obj == Py_None)))) ? 1 :\
-        __Pyx__ArgTypeTest(obj, type, name, exact))
+/* PyObjectGetMethod.proto (used by PyObjectCallMethod1) */
+#if !(CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000)))
+static int __Pyx_PyObject_GetMethod(PyObject *obj, PyObject *name, PyObject **method);
+#endif
 
-/* RejectKeywords.export */
-static void __Pyx_RejectKeywords(const char* function_name, PyObject *kwds);
+/* PyObjectCallMethod1.proto (used by append) */
+static PyObject* __Pyx_PyObject_CallMethod1(PyObject* obj, PyObject* method_name, PyObject* arg);
 
-/* GetAttr3.proto */
-static CYTHON_INLINE PyObject *__Pyx_GetAttr3(PyObject *, PyObject *, PyObject *);
+/* append.proto */
+static CYTHON_INLINE int __Pyx_PyObject_Append(PyObject* L, PyObject* x);
+
+/* DictGetItem.proto */
+#if !CYTHON_COMPILING_IN_PYPY
+static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key);
+#define __Pyx_PyObject_Dict_GetItem(obj, name)\
+    (likely(PyDict_CheckExact(obj)) ?\
+     __Pyx_PyDict_GetItem(obj, name) : PyObject_GetItem(obj, name))
+#else
+#define __Pyx_PyDict_GetItem(d, key) PyObject_GetItem(d, key)
+#define __Pyx_PyObject_Dict_GetItem(obj, name)  PyObject_GetItem(obj, name)
+#endif
+
+/* IterFinish.proto (used by dict_iter) */
+static CYTHON_INLINE int __Pyx_IterFinish(void);
+
+/* PyObjectCallNoArg.proto (used by PyObjectCallMethod0) */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func);
+
+/* PyObjectCallMethod0.proto (used by dict_iter) */
+static PyObject* __Pyx_PyObject_CallMethod0(PyObject* obj, PyObject* method_name);
+
+/* RaiseNeedMoreValuesToUnpack.proto (used by UnpackTuple2) */
+static CYTHON_INLINE void __Pyx_RaiseNeedMoreValuesError(Py_ssize_t index);
+
+/* RaiseTooManyValuesToUnpack.proto (used by UnpackItemEndCheck) */
+static CYTHON_INLINE void __Pyx_RaiseTooManyValuesError(Py_ssize_t expected);
+
+/* UnpackItemEndCheck.proto (used by UnpackTuple2) */
+static int __Pyx_IternextUnpackEndCheck(PyObject *retval, Py_ssize_t expected);
+
+/* RaiseNoneIterError.proto (used by UnpackTupleError) */
+static CYTHON_INLINE void __Pyx_RaiseNoneNotIterableError(void);
+
+/* UnpackTupleError.proto (used by UnpackTuple2) */
+static void __Pyx_UnpackTupleError(PyObject *, Py_ssize_t index);
+
+/* UnpackTuple2.proto (used by dict_iter) */
+static CYTHON_INLINE int __Pyx_unpack_tuple2(
+    PyObject* tuple, PyObject** value1, PyObject** value2, int is_tuple, int has_known_size, int decref_tuple);
+static CYTHON_INLINE int __Pyx_unpack_tuple2_exact(
+    PyObject* tuple, PyObject** value1, PyObject** value2, int decref_tuple);
+static int __Pyx_unpack_tuple2_generic(
+    PyObject* tuple, PyObject** value1, PyObject** value2, int has_known_size, int decref_tuple);
+
+/* dict_iter.proto */
+static CYTHON_INLINE PyObject* __Pyx_dict_iterator(PyObject* dict, int is_dict, PyObject* method_name,
+                                                   Py_ssize_t* p_orig_length, int* p_is_dict);
+static CYTHON_INLINE int __Pyx_dict_iter_next(PyObject* dict_or_iter, Py_ssize_t orig_length, Py_ssize_t* ppos,
+                                              PyObject** pkey, PyObject** pvalue, PyObject** pitem, int is_dict);
 
 /* GetModuleGlobalName.proto */
 #if CYTHON_USE_DICT_VERSIONS
@@ -2054,11 +2108,38 @@ static PyObject *__Pyx__GetModuleGlobalName(PyObject *name, PY_UINT64_T *dict_ve
 static CYTHON_INLINE PyObject *__Pyx__GetModuleGlobalName(PyObject *name);
 #endif
 
-/* PyObjectFastCallMethod.proto */
-#if CYTHON_VECTORCALL && PY_VERSION_HEX >= 0x03090000
-#define __Pyx_PyObject_FastCallMethod(name, args, nargsf) PyObject_VectorcallMethod(name, args, nargsf, NULL)
+/* ListCompAppend.proto */
+#if CYTHON_USE_PYLIST_INTERNALS && CYTHON_ASSUME_SAFE_MACROS
+static CYTHON_INLINE int __Pyx_ListComp_Append(PyObject* list, PyObject* x) {
+    PyListObject* L = (PyListObject*) list;
+    Py_ssize_t len = Py_SIZE(list);
+    if (likely(L->allocated > len)) {
+        Py_INCREF(x);
+        #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030d0000
+        L->ob_item[len] = x;
+        #else
+        PyList_SET_ITEM(list, len, x);
+        #endif
+        __Pyx_SET_SIZE(list, len + 1);
+        return 0;
+    }
+    return PyList_Append(list, x);
+}
 #else
-static PyObject *__Pyx_PyObject_FastCallMethod(PyObject *name, PyObject *const *args, size_t nargsf);
+#define __Pyx_ListComp_Append(L,x) PyList_Append(L,x)
+#endif
+
+/* PyRange_Check.proto */
+#if CYTHON_COMPILING_IN_PYPY && !defined(PyRange_Check)
+  #define PyRange_Check(obj)  __Pyx_TypeCheck((obj), &PyRange_Type)
+#endif
+
+/* PyLongBinop.proto */
+#if !CYTHON_COMPILING_IN_PYPY
+static CYTHON_INLINE PyObject* __Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check);
+#else
+#define __Pyx_PyLong_AddObjC(op1, op2, intval, inplace, zerodivision_check)\
+    (inplace ? PyNumber_InPlaceAdd(op1, op2) : PyNumber_Add(op1, op2))
 #endif
 
 /* GetItemInt.proto */
@@ -2083,6 +2164,78 @@ static PyObject *__Pyx_GetItemInt_Generic(PyObject *o, PyObject* j);
 static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i,
                                                      int is_list, int wraparound, int boundscheck, int unsafe_shared);
 
+/* ObjectGetItem.proto */
+#if CYTHON_USE_TYPE_SLOTS
+static CYTHON_INLINE PyObject *__Pyx_PyObject_GetItem(PyObject *obj, PyObject *key);
+#else
+#define __Pyx_PyObject_GetItem(obj, key)  PyObject_GetItem(obj, key)
+#endif
+
+/* pyfrozenset_new.proto (used by PySetContains) */
+static CYTHON_INLINE PyObject* __Pyx_PyFrozenSet_New(PyObject* it);
+
+/* PySetContains.proto */
+static CYTHON_INLINE int __Pyx_PySet_ContainsTF(PyObject* key, PyObject* set, int eq);
+
+/* SetItemInt.proto */
+#define __Pyx_SetItemInt(o, i, v, type, is_signed, to_py_func, is_list, wraparound, boundscheck, has_gil, unsafe_shared)\
+    (__Pyx_fits_Py_ssize_t(i, type, is_signed) ?\
+    __Pyx_SetItemInt_Fast(o, (Py_ssize_t)i, v, is_list, wraparound, boundscheck, unsafe_shared) :\
+    (is_list ? (PyErr_SetString(PyExc_IndexError, "list assignment index out of range"), -1) :\
+               __Pyx_SetItemInt_Generic(o, to_py_func(i), v)))
+static int __Pyx_SetItemInt_Generic(PyObject *o, PyObject *j, PyObject *v);
+static CYTHON_INLINE int __Pyx_SetItemInt_Fast(PyObject *o, Py_ssize_t i, PyObject *v,
+                                               int is_list, int wraparound, int boundscheck, int unsafe_shared);
+
+/* PyLongBinop.proto */
+#if !CYTHON_COMPILING_IN_PYPY
+static CYTHON_INLINE PyObject* __Pyx_PyLong_SubtractObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check);
+#else
+#define __Pyx_PyLong_SubtractObjC(op1, op2, intval, inplace, zerodivision_check)\
+    (inplace ? PyNumber_InPlaceSubtract(op1, op2) : PyNumber_Subtract(op1, op2))
+#endif
+
+/* PyLongCompare.proto */
+static CYTHON_INLINE int __Pyx_PyLong_BoolEqObjC(PyObject *op1, PyObject *op2, long intval, long inplace);
+
+/* SliceObject.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetSlice(
+        PyObject* obj, Py_ssize_t cstart, Py_ssize_t cstop,
+        PyObject** py_start, PyObject** py_stop, PyObject** py_slice,
+        int has_cstart, int has_cstop, int wraparound);
+
+/* dict_getitem_default.proto */
+static PyObject* __Pyx_PyDict_GetItemDefault(PyObject* d, PyObject* key, PyObject* default_value);
+
+/* CallUnboundCMethod1.proto */
+CYTHON_UNUSED
+static PyObject* __Pyx__CallUnboundCMethod1(__Pyx_CachedCFunction* cfunc, PyObject* self, PyObject* arg);
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_CallUnboundCMethod1(__Pyx_CachedCFunction* cfunc, PyObject* self, PyObject* arg);
+#else
+#define __Pyx_CallUnboundCMethod1(cfunc, self, arg)  __Pyx__CallUnboundCMethod1(cfunc, self, arg)
+#endif
+
+/* PySequenceContains.proto */
+static CYTHON_INLINE int __Pyx_PySequence_ContainsTF(PyObject* item, PyObject* seq, int eq) {
+    int result = PySequence_Contains(seq, item);
+    return unlikely(result < 0) ? result : (result == (eq == Py_EQ));
+}
+
+/* ArgTypeTestFunc.export */
+static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact);
+
+/* ArgTypeTest.proto */
+#define __Pyx_ArgTypeTest(obj, type, none_allowed, name, exact)\
+    ((likely(__Pyx_IS_TYPE(obj, type) | (none_allowed && (obj == Py_None)))) ? 1 :\
+        __Pyx__ArgTypeTest(obj, type, name, exact))
+
+/* RejectKeywords.export */
+static void __Pyx_RejectKeywords(const char* function_name, PyObject *kwds);
+
+/* GetAttr3.proto */
+static CYTHON_INLINE PyObject *__Pyx_GetAttr3(PyObject *, PyObject *, PyObject *);
+
 /* AllocateExtensionType.proto */
 static PyObject *__Pyx_AllocateExtensionType(PyTypeObject *t, int is_final);
 
@@ -2097,17 +2250,6 @@ static int __Pyx__SetItemOnTypeDict(PyTypeObject *tp, PyObject *k, PyObject *v);
 
 /* FixUpExtensionType.proto */
 static CYTHON_INLINE int __Pyx_fix_up_extension_type_from_spec(PyType_Spec *spec, PyTypeObject *type);
-
-/* PyObjectCallNoArg.proto (used by PyObjectCallMethod0) */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func);
-
-/* PyObjectGetMethod.proto (used by PyObjectCallMethod0) */
-#if !(CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000)))
-static int __Pyx_PyObject_GetMethod(PyObject *obj, PyObject *name, PyObject **method);
-#endif
-
-/* PyObjectCallMethod0.proto (used by PyType_Ready) */
-static PyObject* __Pyx_PyObject_CallMethod0(PyObject* obj, PyObject* method_name);
 
 /* ValidateBasesTuple.proto (used by PyType_Ready) */
 #if CYTHON_COMPILING_IN_CPYTHON || CYTHON_COMPILING_IN_LIMITED_API || CYTHON_USE_TYPE_SPECS
@@ -2350,12 +2492,6 @@ static CYTHON_INLINE long __Pyx_PyLong_As_long(PyObject *);
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value);
 
-/* PyObjectCall2Args.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_Call2Args(PyObject* function, PyObject* arg1, PyObject* arg2);
-
-/* PyObjectCallMethod1.proto */
-static PyObject* __Pyx_PyObject_CallMethod1(PyObject* obj, PyObject* method_name, PyObject* arg);
-
 /* UpdateUnpickledDict.proto */
 static int __Pyx_UpdateUnpickledDict(PyObject *obj, PyObject *state, Py_ssize_t index);
 
@@ -2440,11 +2576,9 @@ static int __Pyx_State_RemoveModule(void*);
 
 static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_maestro(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin); /* proto*/
 static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_grupo(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin); /* proto*/
-static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_seguidas(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_dia, int __pyx_v_hora_inicio); /* proto*/
-static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_libres(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_dia, int __pyx_v_hora_inicio); /* proto*/
-static int __pyx_f_9scheduler_15SchedulerEngine_validar_restricciones(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin); /* proto*/
+static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_grupo_dia(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia); /* proto*/
+static int __pyx_f_9scheduler_15SchedulerEngine_obtener_siguiente_hora_libre(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia); /* proto*/
 static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin); /* proto*/
-static void __pyx_f_9scheduler_15SchedulerEngine_desmarcar_ocupado(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin); /* proto*/
 static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, PyObject *__pyx_v_maestros_data, PyObject *__pyx_v_materias_data, PyObject *__pyx_v_grupos_data, int __pyx_skip_dispatch); /* proto*/
 
 /* Module declarations from "libc.string" */
@@ -2459,13 +2593,16 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
 static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(struct __pyx_obj_9scheduler_SchedulerEngine *, PyObject *); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int(int *, Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int(int *, Py_ssize_t); /*proto*/
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_5_5d_(int (*)[5], Py_ssize_t); /*proto*/
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_5_5d_(int (*)[5], Py_ssize_t); /*proto*/
+static int __Pyx_carray_from_py_int(PyObject *, int *, Py_ssize_t); /*proto*/
+static int __Pyx_carray_from_py_int___5b_5_5d_(PyObject *, int (*)[5], Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*)[100], Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*)[100], Py_ssize_t); /*proto*/
-static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_(int (*)[13][100], Py_ssize_t); /*proto*/
-static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_(int (*)[13][100], Py_ssize_t); /*proto*/
-static int __Pyx_carray_from_py_int(PyObject *, int *, Py_ssize_t); /*proto*/
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(int (*)[14][100], Py_ssize_t); /*proto*/
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_(int (*)[14][100], Py_ssize_t); /*proto*/
 static int __Pyx_carray_from_py_int___5b_100_5d_(PyObject *, int (*)[100], Py_ssize_t); /*proto*/
-static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *, int (*)[13][100], Py_ssize_t); /*proto*/
+static int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(PyObject *, int (*)[14][100], Py_ssize_t); /*proto*/
 /* #### Code section: typeinfo ### */
 /* #### Code section: before_global_var ### */
 #define __Pyx_MODULE_NAME "scheduler"
@@ -2505,13 +2642,15 @@ typedef struct {
   PyObject *__pyx_empty_unicode;
   PyObject *__pyx_type_9scheduler_SchedulerEngine;
   PyTypeObject *__pyx_ptype_9scheduler_SchedulerEngine;
+  __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_get;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_items;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_pop;
   __Pyx_CachedCFunction __pyx_umethod_PyDict_Type_values;
-  PyObject *__pyx_tuple[1];
+  PyObject *__pyx_slice[1];
+  PyObject *__pyx_tuple[2];
   PyObject *__pyx_codeobj_tab[4];
-  PyObject *__pyx_string_tab[72];
-  PyObject *__pyx_number_tab[2];
+  PyObject *__pyx_string_tab[80];
+  PyObject *__pyx_number_tab[9];
 /* #### Code section: module_state_contents ### */
 /* CommonTypesMetaclass.module_state_decls */
 PyTypeObject *__pyx_CommonTypesMetaclassType;
@@ -2567,65 +2706,80 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_SchedulerEngine___reduce_cython __pyx_string_tab[12]
 #define __pyx_n_u_SchedulerEngine___setstate_cytho __pyx_string_tab[13]
 #define __pyx_n_u_SchedulerEngine_generar_horario __pyx_string_tab[14]
-#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[15]
-#define __pyx_n_u_cline_in_traceback __pyx_string_tab[16]
-#define __pyx_n_u_dia_semana __pyx_string_tab[17]
-#define __pyx_n_u_dict __pyx_string_tab[18]
-#define __pyx_n_u_dict_2 __pyx_string_tab[19]
-#define __pyx_n_u_enumerate __pyx_string_tab[20]
-#define __pyx_n_u_func __pyx_string_tab[21]
-#define __pyx_n_u_generar_horario __pyx_string_tab[22]
-#define __pyx_n_u_getstate __pyx_string_tab[23]
-#define __pyx_n_u_grupo_id __pyx_string_tab[24]
-#define __pyx_n_u_grupos __pyx_string_tab[25]
-#define __pyx_n_u_grupos_data __pyx_string_tab[26]
-#define __pyx_n_u_hora_fin __pyx_string_tab[27]
-#define __pyx_n_u_hora_inicio __pyx_string_tab[28]
-#define __pyx_n_u_hora_max __pyx_string_tab[29]
-#define __pyx_n_u_hora_min __pyx_string_tab[30]
-#define __pyx_n_u_horas_semanales __pyx_string_tab[31]
-#define __pyx_n_u_id __pyx_string_tab[32]
-#define __pyx_n_u_is_coroutine __pyx_string_tab[33]
-#define __pyx_n_u_items __pyx_string_tab[34]
-#define __pyx_n_u_maestro_id __pyx_string_tab[35]
-#define __pyx_n_u_maestros __pyx_string_tab[36]
-#define __pyx_n_u_maestros_data __pyx_string_tab[37]
-#define __pyx_n_u_main __pyx_string_tab[38]
-#define __pyx_n_u_materia_id __pyx_string_tab[39]
-#define __pyx_n_u_materias __pyx_string_tab[40]
-#define __pyx_n_u_materias_data __pyx_string_tab[41]
-#define __pyx_n_u_module __pyx_string_tab[42]
-#define __pyx_n_u_name __pyx_string_tab[43]
-#define __pyx_n_u_new __pyx_string_tab[44]
-#define __pyx_n_u_pop __pyx_string_tab[45]
-#define __pyx_n_u_pyx_checksum __pyx_string_tab[46]
-#define __pyx_n_u_pyx_result __pyx_string_tab[47]
-#define __pyx_n_u_pyx_state __pyx_string_tab[48]
-#define __pyx_n_u_pyx_type __pyx_string_tab[49]
-#define __pyx_n_u_pyx_unpickle_SchedulerEngine __pyx_string_tab[50]
-#define __pyx_n_u_pyx_vtable __pyx_string_tab[51]
-#define __pyx_n_u_qualname __pyx_string_tab[52]
-#define __pyx_n_u_random __pyx_string_tab[53]
-#define __pyx_n_u_reduce __pyx_string_tab[54]
-#define __pyx_n_u_reduce_cython __pyx_string_tab[55]
-#define __pyx_n_u_reduce_ex __pyx_string_tab[56]
-#define __pyx_n_u_scheduler __pyx_string_tab[57]
-#define __pyx_n_u_self __pyx_string_tab[58]
-#define __pyx_n_u_set_name __pyx_string_tab[59]
-#define __pyx_n_u_setdefault __pyx_string_tab[60]
-#define __pyx_n_u_setstate __pyx_string_tab[61]
-#define __pyx_n_u_setstate_cython __pyx_string_tab[62]
-#define __pyx_n_u_state __pyx_string_tab[63]
-#define __pyx_n_u_test __pyx_string_tab[64]
-#define __pyx_n_u_update __pyx_string_tab[65]
-#define __pyx_n_u_use_setstate __pyx_string_tab[66]
-#define __pyx_n_u_values __pyx_string_tab[67]
-#define __pyx_kp_b_iso88591_A_Kq_b_q_1_1_G5_q_uAT_D_as_r_9Bd __pyx_string_tab[68]
-#define __pyx_kp_b_iso88591_QfA __pyx_string_tab[69]
-#define __pyx_kp_b_iso88591_T_D_4_D_tSbbffyy_G1F_a_vWE_Q_q __pyx_string_tab[70]
-#define __pyx_kp_b_iso88591_q_0_kQR_1_7_1_2DNRS_1 __pyx_string_tab[71]
+#define __pyx_n_u_append __pyx_string_tab[15]
+#define __pyx_n_u_asyncio_coroutines __pyx_string_tab[16]
+#define __pyx_n_u_class_getitem __pyx_string_tab[17]
+#define __pyx_n_u_cline_in_traceback __pyx_string_tab[18]
+#define __pyx_n_u_dia_semana __pyx_string_tab[19]
+#define __pyx_n_u_dias_disponibles __pyx_string_tab[20]
+#define __pyx_n_u_dict __pyx_string_tab[21]
+#define __pyx_n_u_dict_2 __pyx_string_tab[22]
+#define __pyx_n_u_enumerate __pyx_string_tab[23]
+#define __pyx_n_u_func __pyx_string_tab[24]
+#define __pyx_n_u_generar_horario __pyx_string_tab[25]
+#define __pyx_n_u_get __pyx_string_tab[26]
+#define __pyx_n_u_getstate __pyx_string_tab[27]
+#define __pyx_n_u_grupo_id __pyx_string_tab[28]
+#define __pyx_n_u_grupos __pyx_string_tab[29]
+#define __pyx_n_u_grupos_data __pyx_string_tab[30]
+#define __pyx_n_u_hora_fin __pyx_string_tab[31]
+#define __pyx_n_u_hora_inicio __pyx_string_tab[32]
+#define __pyx_n_u_hora_max __pyx_string_tab[33]
+#define __pyx_n_u_hora_min __pyx_string_tab[34]
+#define __pyx_n_u_horas __pyx_string_tab[35]
+#define __pyx_n_u_horas_max_dia __pyx_string_tab[36]
+#define __pyx_n_u_horas_semanales __pyx_string_tab[37]
+#define __pyx_n_u_id __pyx_string_tab[38]
+#define __pyx_n_u_is_coroutine __pyx_string_tab[39]
+#define __pyx_n_u_items __pyx_string_tab[40]
+#define __pyx_n_u_maestro_id __pyx_string_tab[41]
+#define __pyx_n_u_maestros __pyx_string_tab[42]
+#define __pyx_n_u_maestros_data __pyx_string_tab[43]
+#define __pyx_n_u_main __pyx_string_tab[44]
+#define __pyx_n_u_materia_id __pyx_string_tab[45]
+#define __pyx_n_u_materias __pyx_string_tab[46]
+#define __pyx_n_u_materias_data __pyx_string_tab[47]
+#define __pyx_n_u_materias_ids __pyx_string_tab[48]
+#define __pyx_n_u_module __pyx_string_tab[49]
+#define __pyx_n_u_name __pyx_string_tab[50]
+#define __pyx_n_u_new __pyx_string_tab[51]
+#define __pyx_n_u_pop __pyx_string_tab[52]
+#define __pyx_n_u_pyx_checksum __pyx_string_tab[53]
+#define __pyx_n_u_pyx_result __pyx_string_tab[54]
+#define __pyx_n_u_pyx_state __pyx_string_tab[55]
+#define __pyx_n_u_pyx_type __pyx_string_tab[56]
+#define __pyx_n_u_pyx_unpickle_SchedulerEngine __pyx_string_tab[57]
+#define __pyx_n_u_pyx_vtable __pyx_string_tab[58]
+#define __pyx_n_u_qualname __pyx_string_tab[59]
+#define __pyx_n_u_random __pyx_string_tab[60]
+#define __pyx_n_u_reduce __pyx_string_tab[61]
+#define __pyx_n_u_reduce_cython __pyx_string_tab[62]
+#define __pyx_n_u_reduce_ex __pyx_string_tab[63]
+#define __pyx_n_u_scheduler __pyx_string_tab[64]
+#define __pyx_n_u_self __pyx_string_tab[65]
+#define __pyx_n_u_set_name __pyx_string_tab[66]
+#define __pyx_n_u_setdefault __pyx_string_tab[67]
+#define __pyx_n_u_setstate __pyx_string_tab[68]
+#define __pyx_n_u_setstate_cython __pyx_string_tab[69]
+#define __pyx_n_u_shuffle __pyx_string_tab[70]
+#define __pyx_n_u_state __pyx_string_tab[71]
+#define __pyx_n_u_test __pyx_string_tab[72]
+#define __pyx_n_u_update __pyx_string_tab[73]
+#define __pyx_n_u_use_setstate __pyx_string_tab[74]
+#define __pyx_n_u_values __pyx_string_tab[75]
+#define __pyx_kp_b_iso88591_A_r_QoROaab_q_Kq_wd_1_a_gQ_q_A_q __pyx_string_tab[76]
+#define __pyx_kp_b_iso88591_QfA __pyx_string_tab[77]
+#define __pyx_kp_b_iso88591_T_D_4_C4_TXXggkkzz_R_R_V_V_W_G1 __pyx_string_tab[78]
+#define __pyx_kp_b_iso88591_q_0_kQR_1_7_1_2DNRS_1 __pyx_string_tab[79]
 #define __pyx_int_0 __pyx_number_tab[0]
-#define __pyx_int_184869572 __pyx_number_tab[1]
+#define __pyx_int_neg_1 __pyx_number_tab[1]
+#define __pyx_int_1 __pyx_number_tab[2]
+#define __pyx_int_2 __pyx_number_tab[3]
+#define __pyx_int_3 __pyx_number_tab[4]
+#define __pyx_int_4 __pyx_number_tab[5]
+#define __pyx_int_8 __pyx_number_tab[6]
+#define __pyx_int_100 __pyx_number_tab[7]
+#define __pyx_int_168994040 __pyx_number_tab[8]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -2642,10 +2796,11 @@ static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
   #endif
   Py_CLEAR(clear_module_state->__pyx_ptype_9scheduler_SchedulerEngine);
   Py_CLEAR(clear_module_state->__pyx_type_9scheduler_SchedulerEngine);
-  for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
+  for (int i=0; i<1; ++i) { Py_CLEAR(clear_module_state->__pyx_slice[i]); }
+  for (int i=0; i<2; ++i) { Py_CLEAR(clear_module_state->__pyx_tuple[i]); }
   for (int i=0; i<4; ++i) { Py_CLEAR(clear_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<72; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
-  for (int i=0; i<2; ++i) { Py_CLEAR(clear_module_state->__pyx_number_tab[i]); }
+  for (int i=0; i<80; ++i) { Py_CLEAR(clear_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<9; ++i) { Py_CLEAR(clear_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_clear_contents ### */
 /* CommonTypesMetaclass.module_state_clear */
 Py_CLEAR(clear_module_state->__pyx_CommonTypesMetaclassType);
@@ -2670,10 +2825,11 @@ static CYTHON_SMALL_CODE int __pyx_m_traverse(PyObject *m, visitproc visit, void
   __Pyx_VISIT_CONST(traverse_module_state->__pyx_empty_unicode);
   Py_VISIT(traverse_module_state->__pyx_ptype_9scheduler_SchedulerEngine);
   Py_VISIT(traverse_module_state->__pyx_type_9scheduler_SchedulerEngine);
-  for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
+  for (int i=0; i<1; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_slice[i]); }
+  for (int i=0; i<2; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_tuple[i]); }
   for (int i=0; i<4; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_codeobj_tab[i]); }
-  for (int i=0; i<72; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
-  for (int i=0; i<2; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_number_tab[i]); }
+  for (int i=0; i<80; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_string_tab[i]); }
+  for (int i=0; i<9; ++i) { __Pyx_VISIT_CONST(traverse_module_state->__pyx_number_tab[i]); }
 /* #### Code section: module_state_traverse_contents ### */
 /* CommonTypesMetaclass.module_state_traverse */
 Py_VISIT(traverse_module_state->__pyx_CommonTypesMetaclassType);
@@ -2911,12 +3067,12 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int(int *__pyx_v_v, Py_ssiz
 /* "carray.to_py":113
  * 
  * 
- * @cname("__Pyx_carray_to_py_int___5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline list __Pyx_carray_to_py_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ * @cname("__Pyx_carray_to_py_int___5b_5_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline list __Pyx_carray_to_py_int___5b_5_5d_(base_type *v, Py_ssize_t length):
  *     cdef Py_ssize_t i
 */
 
-static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*__pyx_v_v)[100], Py_ssize_t __pyx_v_length) {
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_5_5d_(int (*__pyx_v_v)[5], Py_ssize_t __pyx_v_length) {
   Py_ssize_t __pyx_v_i;
   PyObject *__pyx_v_value = 0;
   PyObject *__pyx_v_l = NULL;
@@ -2930,7 +3086,7 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*__pyx_v
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int___5b_100_5d_", 0);
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int___5b_5_5d_", 0);
 
   /* "carray.to_py":117
  *     cdef Py_ssize_t i
@@ -2963,7 +3119,7 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*__pyx_v
  *         Py_INCREF(value)
  *         __Pyx_PyList_SET_ITEM(l, i, value)
 */
-    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 100); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 119, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 5); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 119, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
     __pyx_t_1 = 0;
@@ -3002,15 +3158,15 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*__pyx_v
   /* "carray.to_py":113
  * 
  * 
- * @cname("__Pyx_carray_to_py_int___5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline list __Pyx_carray_to_py_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ * @cname("__Pyx_carray_to_py_int___5b_5_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline list __Pyx_carray_to_py_int___5b_5_5d_(base_type *v, Py_ssize_t length):
  *     cdef Py_ssize_t i
 */
 
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int___5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int___5b_5_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_value);
@@ -3023,12 +3179,12 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*__pyx_v
 /* "carray.to_py":125
  * 
  * 
- * @cname("__Pyx_carray_to_tuple_int___5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline tuple __Pyx_carray_to_tuple_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ * @cname("__Pyx_carray_to_tuple_int___5b_5_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline tuple __Pyx_carray_to_tuple_int___5b_5_5d_(base_type *v, Py_ssize_t length):
  *     cdef Py_ssize_t i
 */
 
-static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*__pyx_v_v)[100], Py_ssize_t __pyx_v_length) {
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_5_5d_(int (*__pyx_v_v)[5], Py_ssize_t __pyx_v_length) {
   Py_ssize_t __pyx_v_i;
   PyObject *__pyx_v_value = 0;
   PyObject *__pyx_v_t = NULL;
@@ -3042,7 +3198,7 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*__py
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int___5b_100_5d_", 0);
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int___5b_5_5d_", 0);
 
   /* "carray.to_py":129
  *     cdef Py_ssize_t i
@@ -3075,7 +3231,7 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*__py
  *         Py_INCREF(value)
  *         __Pyx_PyTuple_SET_ITEM(t, i, value)
 */
-    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 100); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 131, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 5); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 131, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
     __pyx_t_1 = 0;
@@ -3111,236 +3267,15 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*__py
   /* "carray.to_py":125
  * 
  * 
- * @cname("__Pyx_carray_to_tuple_int___5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline tuple __Pyx_carray_to_tuple_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ * @cname("__Pyx_carray_to_tuple_int___5b_5_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline tuple __Pyx_carray_to_tuple_int___5b_5_5d_(base_type *v, Py_ssize_t length):
  *     cdef Py_ssize_t i
 */
 
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int___5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_value);
-  __Pyx_XDECREF(__pyx_v_t);
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "carray.to_py":113
- * 
- * 
- * @cname("__Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline list __Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_(int (*__pyx_v_v)[13][100], Py_ssize_t __pyx_v_length) {
-  Py_ssize_t __pyx_v_i;
-  PyObject *__pyx_v_value = 0;
-  PyObject *__pyx_v_l = NULL;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  Py_ssize_t __pyx_t_2;
-  Py_ssize_t __pyx_t_3;
-  Py_ssize_t __pyx_t_4;
-  int __pyx_t_5;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_", 0);
-
-  /* "carray.to_py":117
- *     cdef Py_ssize_t i
- *     cdef object value
- *     l = PyList_New(length)             # <<<<<<<<<<<<<<
- *     for i in range(length):
- *         value = v[<size_t> i]
-*/
-  __pyx_t_1 = PyList_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 117, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_v_l = ((PyObject*)__pyx_t_1);
-  __pyx_t_1 = 0;
-
-  /* "carray.to_py":118
- *     cdef object value
- *     l = PyList_New(length)
- *     for i in range(length):             # <<<<<<<<<<<<<<
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
-*/
-  __pyx_t_2 = __pyx_v_length;
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-
-    /* "carray.to_py":119
- *     l = PyList_New(length)
- *     for i in range(length):
- *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
- *         Py_INCREF(value)
- *         __Pyx_PyList_SET_ITEM(l, i, value)
-*/
-    __pyx_t_1 = __Pyx_carray_to_py_int___5b_100_5d_((__pyx_v_v[((size_t)__pyx_v_i)]), 13); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 119, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
-    __pyx_t_1 = 0;
-
-    /* "carray.to_py":120
- *     for i in range(length):
- *         value = v[<size_t> i]
- *         Py_INCREF(value)             # <<<<<<<<<<<<<<
- *         __Pyx_PyList_SET_ITEM(l, i, value)
- *     return l
-*/
-    Py_INCREF(__pyx_v_value);
-
-    /* "carray.to_py":121
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
- *         __Pyx_PyList_SET_ITEM(l, i, value)             # <<<<<<<<<<<<<<
- *     return l
- * 
-*/
-    __pyx_t_5 = __Pyx_PyList_SET_ITEM(__pyx_v_l, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 121, __pyx_L1_error)
-  }
-
-  /* "carray.to_py":122
- *         Py_INCREF(value)
- *         __Pyx_PyList_SET_ITEM(l, i, value)
- *     return l             # <<<<<<<<<<<<<<
- * 
- * 
-*/
-  __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_v_l);
-  __pyx_r = __pyx_v_l;
-  goto __pyx_L0;
-
-  /* "carray.to_py":113
- * 
- * 
- * @cname("__Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline list __Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_value);
-  __Pyx_XDECREF(__pyx_v_l);
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "carray.to_py":125
- * 
- * 
- * @cname("__Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline tuple __Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_(int (*__pyx_v_v)[13][100], Py_ssize_t __pyx_v_length) {
-  Py_ssize_t __pyx_v_i;
-  PyObject *__pyx_v_value = 0;
-  PyObject *__pyx_v_t = NULL;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  Py_ssize_t __pyx_t_2;
-  Py_ssize_t __pyx_t_3;
-  Py_ssize_t __pyx_t_4;
-  int __pyx_t_5;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_", 0);
-
-  /* "carray.to_py":129
- *     cdef Py_ssize_t i
- *     cdef object value
- *     t = PyTuple_New(length)             # <<<<<<<<<<<<<<
- *     for i in range(length):
- *         value = v[<size_t> i]
-*/
-  __pyx_t_1 = PyTuple_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 129, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_v_t = ((PyObject*)__pyx_t_1);
-  __pyx_t_1 = 0;
-
-  /* "carray.to_py":130
- *     cdef object value
- *     t = PyTuple_New(length)
- *     for i in range(length):             # <<<<<<<<<<<<<<
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
-*/
-  __pyx_t_2 = __pyx_v_length;
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-
-    /* "carray.to_py":131
- *     t = PyTuple_New(length)
- *     for i in range(length):
- *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
- *         Py_INCREF(value)
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)
-*/
-    __pyx_t_1 = __Pyx_carray_to_py_int___5b_100_5d_((__pyx_v_v[((size_t)__pyx_v_i)]), 13); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 131, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
-    __pyx_t_1 = 0;
-
-    /* "carray.to_py":132
- *     for i in range(length):
- *         value = v[<size_t> i]
- *         Py_INCREF(value)             # <<<<<<<<<<<<<<
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)
- *     return t
-*/
-    Py_INCREF(__pyx_v_value);
-
-    /* "carray.to_py":133
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)             # <<<<<<<<<<<<<<
- *     return t
-*/
-    __pyx_t_5 = __Pyx_PyTuple_SET_ITEM(__pyx_v_t, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 133, __pyx_L1_error)
-  }
-
-  /* "carray.to_py":134
- *         Py_INCREF(value)
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)
- *     return t             # <<<<<<<<<<<<<<
-*/
-  __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_v_t);
-  __pyx_r = __pyx_v_t;
-  goto __pyx_L0;
-
-  /* "carray.to_py":125
- * 
- * 
- * @cname("__Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef inline tuple __Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int___5b_13_5d__5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int___5b_5_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_value);
@@ -3685,6 +3620,784 @@ static int __Pyx_carray_from_py_int(PyObject *__pyx_v_o, int *__pyx_v_v, Py_ssiz
   return __pyx_r;
 }
 
+static int __Pyx_carray_from_py_int___5b_5_5d_(PyObject *__pyx_v_o, int (*__pyx_v_v)[5], Py_ssize_t __pyx_v_length) {
+  Py_ssize_t __pyx_v_i;
+  PyObject *__pyx_v_item = NULL;
+  int __pyx_r;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  PyObject *__pyx_t_2 = NULL;
+  PyObject *__pyx_t_3 = NULL;
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_t_6;
+  PyObject *__pyx_t_7 = NULL;
+  Py_ssize_t __pyx_t_8;
+  PyObject *(*__pyx_t_9)(PyObject *);
+  PyObject *__pyx_t_10 = NULL;
+  int __pyx_t_11[5];
+  char const *__pyx_t_12;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_from_py_int___5b_5_5d_", 0);
+
+  /* "carray.from_py":80
+ * @cname("__Pyx_carray_from_py_int___5b_5_5d_")
+ * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ *     cdef Py_ssize_t i = length             # <<<<<<<<<<<<<<
+ *     try:
+ *         i = len(o)
+*/
+  __pyx_v_i = __pyx_v_length;
+
+  /* "carray.from_py":81
+ * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ *     cdef Py_ssize_t i = length
+ *     try:             # <<<<<<<<<<<<<<
+ *         i = len(o)
+ *     except (TypeError, OverflowError):
+*/
+  {
+    __Pyx_PyThreadState_declare
+    __Pyx_PyThreadState_assign
+    __Pyx_ExceptionSave(&__pyx_t_1, &__pyx_t_2, &__pyx_t_3);
+    __Pyx_XGOTREF(__pyx_t_1);
+    __Pyx_XGOTREF(__pyx_t_2);
+    __Pyx_XGOTREF(__pyx_t_3);
+    /*try:*/ {
+
+      /* "carray.from_py":82
+ *     cdef Py_ssize_t i = length
+ *     try:
+ *         i = len(o)             # <<<<<<<<<<<<<<
+ *     except (TypeError, OverflowError):
+ *         pass
+*/
+      __pyx_t_4 = PyObject_Length(__pyx_v_o); if (unlikely(__pyx_t_4 == ((Py_ssize_t)-1))) __PYX_ERR(1, 82, __pyx_L3_error)
+      __pyx_v_i = __pyx_t_4;
+
+      /* "carray.from_py":81
+ * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ *     cdef Py_ssize_t i = length
+ *     try:             # <<<<<<<<<<<<<<
+ *         i = len(o)
+ *     except (TypeError, OverflowError):
+*/
+    }
+    __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
+    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
+    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+    goto __pyx_L8_try_end;
+    __pyx_L3_error:;
+
+    /* "carray.from_py":83
+ *     try:
+ *         i = len(o)
+ *     except (TypeError, OverflowError):             # <<<<<<<<<<<<<<
+ *         pass
+ *     if i == length:
+*/
+    __pyx_t_5 = __Pyx_PyErr_ExceptionMatches2(((PyObject *)(((PyTypeObject*)PyExc_TypeError))), ((PyObject *)(((PyTypeObject*)PyExc_OverflowError))));
+    if (__pyx_t_5) {
+      __Pyx_ErrRestore(0,0,0);
+      goto __pyx_L4_exception_handled;
+    }
+    goto __pyx_L5_except_error;
+
+    /* "carray.from_py":81
+ * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ *     cdef Py_ssize_t i = length
+ *     try:             # <<<<<<<<<<<<<<
+ *         i = len(o)
+ *     except (TypeError, OverflowError):
+*/
+    __pyx_L5_except_error:;
+    __Pyx_XGIVEREF(__pyx_t_1);
+    __Pyx_XGIVEREF(__pyx_t_2);
+    __Pyx_XGIVEREF(__pyx_t_3);
+    __Pyx_ExceptionReset(__pyx_t_1, __pyx_t_2, __pyx_t_3);
+    goto __pyx_L1_error;
+    __pyx_L4_exception_handled:;
+    __Pyx_XGIVEREF(__pyx_t_1);
+    __Pyx_XGIVEREF(__pyx_t_2);
+    __Pyx_XGIVEREF(__pyx_t_3);
+    __Pyx_ExceptionReset(__pyx_t_1, __pyx_t_2, __pyx_t_3);
+    __pyx_L8_try_end:;
+  }
+
+  /* "carray.from_py":85
+ *     except (TypeError, OverflowError):
+ *         pass
+ *     if i == length:             # <<<<<<<<<<<<<<
+ *         for i, item in enumerate(o):
+ *             if i >= length:
+*/
+  __pyx_t_6 = (__pyx_v_i == __pyx_v_length);
+  if (__pyx_t_6) {
+
+    /* "carray.from_py":86
+ *         pass
+ *     if i == length:
+ *         for i, item in enumerate(o):             # <<<<<<<<<<<<<<
+ *             if i >= length:
+ *                 break
+*/
+    __pyx_t_4 = 0;
+    if (likely(PyList_CheckExact(__pyx_v_o)) || PyTuple_CheckExact(__pyx_v_o)) {
+      __pyx_t_7 = __pyx_v_o; __Pyx_INCREF(__pyx_t_7);
+      __pyx_t_8 = 0;
+      __pyx_t_9 = NULL;
+    } else {
+      __pyx_t_8 = -1; __pyx_t_7 = PyObject_GetIter(__pyx_v_o); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 86, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_7); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 86, __pyx_L1_error)
+    }
+    for (;;) {
+      if (likely(!__pyx_t_9)) {
+        if (likely(PyList_CheckExact(__pyx_t_7))) {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_7);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(1, 86, __pyx_L1_error)
+            #endif
+            if (__pyx_t_8 >= __pyx_temp) break;
+          }
+          __pyx_t_10 = __Pyx_PyList_GetItemRefFast(__pyx_t_7, __pyx_t_8, __Pyx_ReferenceSharing_OwnStrongReference);
+          ++__pyx_t_8;
+        } else {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_7);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(1, 86, __pyx_L1_error)
+            #endif
+            if (__pyx_t_8 >= __pyx_temp) break;
+          }
+          #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+          __pyx_t_10 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_7, __pyx_t_8));
+          #else
+          __pyx_t_10 = __Pyx_PySequence_ITEM(__pyx_t_7, __pyx_t_8);
+          #endif
+          ++__pyx_t_8;
+        }
+        if (unlikely(!__pyx_t_10)) __PYX_ERR(1, 86, __pyx_L1_error)
+      } else {
+        __pyx_t_10 = __pyx_t_9(__pyx_t_7);
+        if (unlikely(!__pyx_t_10)) {
+          PyObject* exc_type = PyErr_Occurred();
+          if (exc_type) {
+            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(1, 86, __pyx_L1_error)
+            PyErr_Clear();
+          }
+          break;
+        }
+      }
+      __Pyx_GOTREF(__pyx_t_10);
+      __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_10);
+      __pyx_t_10 = 0;
+      __pyx_v_i = __pyx_t_4;
+      __pyx_t_4 = (__pyx_t_4 + 1);
+
+      /* "carray.from_py":87
+ *     if i == length:
+ *         for i, item in enumerate(o):
+ *             if i >= length:             # <<<<<<<<<<<<<<
+ *                 break
+ *             v[i] = item
+*/
+      __pyx_t_6 = (__pyx_v_i >= __pyx_v_length);
+      if (__pyx_t_6) {
+
+        /* "carray.from_py":88
+ *         for i, item in enumerate(o):
+ *             if i >= length:
+ *                 break             # <<<<<<<<<<<<<<
+ *             v[i] = item
+ *         else:
+*/
+        goto __pyx_L13_break;
+
+        /* "carray.from_py":87
+ *     if i == length:
+ *         for i, item in enumerate(o):
+ *             if i >= length:             # <<<<<<<<<<<<<<
+ *                 break
+ *             v[i] = item
+*/
+      }
+
+      /* "carray.from_py":89
+ *             if i >= length:
+ *                 break
+ *             v[i] = item             # <<<<<<<<<<<<<<
+ *         else:
+ *             i += 1  # convert index to length
+*/
+      if (unlikely((__Pyx_carray_from_py_int(__pyx_v_item, __pyx_t_11, 5) < 0))) __PYX_ERR(1, 89, __pyx_L1_error)
+      memcpy(&((__pyx_v_v[__pyx_v_i])[0]), __pyx_t_11, sizeof((__pyx_v_v[__pyx_v_i])[0]) * (5));
+
+      /* "carray.from_py":86
+ *         pass
+ *     if i == length:
+ *         for i, item in enumerate(o):             # <<<<<<<<<<<<<<
+ *             if i >= length:
+ *                 break
+*/
+    }
+    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+    goto __pyx_L15_for_else;
+    __pyx_L13_break:;
+    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+    goto __pyx_L16_for_end;
+    /*else*/ {
+      __pyx_L15_for_else:;
+
+      /* "carray.from_py":91
+ *             v[i] = item
+ *         else:
+ *             i += 1  # convert index to length             # <<<<<<<<<<<<<<
+ *             if i == length:
+ *                 return 0
+*/
+      __pyx_v_i = (__pyx_v_i + 1);
+
+      /* "carray.from_py":92
+ *         else:
+ *             i += 1  # convert index to length
+ *             if i == length:             # <<<<<<<<<<<<<<
+ *                 return 0
+ * 
+*/
+      __pyx_t_6 = (__pyx_v_i == __pyx_v_length);
+      if (__pyx_t_6) {
+
+        /* "carray.from_py":93
+ *             i += 1  # convert index to length
+ *             if i == length:
+ *                 return 0             # <<<<<<<<<<<<<<
+ * 
+ *     PyErr_Format(
+*/
+        __pyx_r = 0;
+        goto __pyx_L0;
+
+        /* "carray.from_py":92
+ *         else:
+ *             i += 1  # convert index to length
+ *             if i == length:             # <<<<<<<<<<<<<<
+ *                 return 0
+ * 
+*/
+      }
+    }
+    __pyx_L16_for_end:;
+
+    /* "carray.from_py":85
+ *     except (TypeError, OverflowError):
+ *         pass
+ *     if i == length:             # <<<<<<<<<<<<<<
+ *         for i, item in enumerate(o):
+ *             if i >= length:
+*/
+  }
+
+  /* "carray.from_py":98
+ *         IndexError,
+ *         ("too many values found during array assignment, expected %zd"
+ *          if i >= length else             # <<<<<<<<<<<<<<
+ *          "not enough values found during array assignment, expected %zd, got %zd"),
+ *         length, i)
+*/
+  __pyx_t_6 = (__pyx_v_i >= __pyx_v_length);
+  if (__pyx_t_6) {
+    __pyx_t_12 = ((char const *)"too many values found during array assignment, expected %zd");
+  } else {
+    __pyx_t_12 = ((char const *)"not enough values found during array assignment, expected %zd, got %zd");
+  }
+
+  /* "carray.from_py":95
+ *                 return 0
+ * 
+ *     PyErr_Format(             # <<<<<<<<<<<<<<
+ *         IndexError,
+ *         ("too many values found during array assignment, expected %zd"
+*/
+  __pyx_t_7 = PyErr_Format(((PyObject *)(((PyTypeObject*)PyExc_IndexError))), __pyx_t_12, __pyx_v_length, __pyx_v_i); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 95, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+
+  /* "carray.from_py":78
+ *     object PyErr_Format(exc, const char *format, ...)
+ * 
+ * @cname("__Pyx_carray_from_py_int___5b_5_5d_")             # <<<<<<<<<<<<<<
+ * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ *     cdef Py_ssize_t i = length
+*/
+
+  /* function exit code */
+  __pyx_r = 0;
+  goto __pyx_L0;
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_10);
+  __Pyx_AddTraceback("carray.from_py.__Pyx_carray_from_py_int___5b_5_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = -1;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_item);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "carray.to_py":113
+ * 
+ * 
+ * @cname("__Pyx_carray_to_py_int___5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline list __Pyx_carray_to_py_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*__pyx_v_v)[100], Py_ssize_t __pyx_v_length) {
+  Py_ssize_t __pyx_v_i;
+  PyObject *__pyx_v_value = 0;
+  PyObject *__pyx_v_l = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  Py_ssize_t __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int___5b_100_5d_", 0);
+
+  /* "carray.to_py":117
+ *     cdef Py_ssize_t i
+ *     cdef object value
+ *     l = PyList_New(length)             # <<<<<<<<<<<<<<
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+*/
+  __pyx_t_1 = PyList_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 117, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_l = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "carray.to_py":118
+ *     cdef object value
+ *     l = PyList_New(length)
+ *     for i in range(length):             # <<<<<<<<<<<<<<
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+*/
+  __pyx_t_2 = __pyx_v_length;
+  __pyx_t_3 = __pyx_t_2;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_i = __pyx_t_4;
+
+    /* "carray.to_py":119
+ *     l = PyList_New(length)
+ *     for i in range(length):
+ *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
+ *         Py_INCREF(value)
+ *         __Pyx_PyList_SET_ITEM(l, i, value)
+*/
+    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 100); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 119, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
+    __pyx_t_1 = 0;
+
+    /* "carray.to_py":120
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)             # <<<<<<<<<<<<<<
+ *         __Pyx_PyList_SET_ITEM(l, i, value)
+ *     return l
+*/
+    Py_INCREF(__pyx_v_value);
+
+    /* "carray.to_py":121
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+ *         __Pyx_PyList_SET_ITEM(l, i, value)             # <<<<<<<<<<<<<<
+ *     return l
+ * 
+*/
+    __pyx_t_5 = __Pyx_PyList_SET_ITEM(__pyx_v_l, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 121, __pyx_L1_error)
+  }
+
+  /* "carray.to_py":122
+ *         Py_INCREF(value)
+ *         __Pyx_PyList_SET_ITEM(l, i, value)
+ *     return l             # <<<<<<<<<<<<<<
+ * 
+ * 
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_l);
+  __pyx_r = __pyx_v_l;
+  goto __pyx_L0;
+
+  /* "carray.to_py":113
+ * 
+ * 
+ * @cname("__Pyx_carray_to_py_int___5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline list __Pyx_carray_to_py_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int___5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_XDECREF(__pyx_v_l);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "carray.to_py":125
+ * 
+ * 
+ * @cname("__Pyx_carray_to_tuple_int___5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline tuple __Pyx_carray_to_tuple_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*__pyx_v_v)[100], Py_ssize_t __pyx_v_length) {
+  Py_ssize_t __pyx_v_i;
+  PyObject *__pyx_v_value = 0;
+  PyObject *__pyx_v_t = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  Py_ssize_t __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int___5b_100_5d_", 0);
+
+  /* "carray.to_py":129
+ *     cdef Py_ssize_t i
+ *     cdef object value
+ *     t = PyTuple_New(length)             # <<<<<<<<<<<<<<
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+*/
+  __pyx_t_1 = PyTuple_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 129, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_t = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "carray.to_py":130
+ *     cdef object value
+ *     t = PyTuple_New(length)
+ *     for i in range(length):             # <<<<<<<<<<<<<<
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+*/
+  __pyx_t_2 = __pyx_v_length;
+  __pyx_t_3 = __pyx_t_2;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_i = __pyx_t_4;
+
+    /* "carray.to_py":131
+ *     t = PyTuple_New(length)
+ *     for i in range(length):
+ *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
+ *         Py_INCREF(value)
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)
+*/
+    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 100); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 131, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
+    __pyx_t_1 = 0;
+
+    /* "carray.to_py":132
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)             # <<<<<<<<<<<<<<
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)
+ *     return t
+*/
+    Py_INCREF(__pyx_v_value);
+
+    /* "carray.to_py":133
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)             # <<<<<<<<<<<<<<
+ *     return t
+*/
+    __pyx_t_5 = __Pyx_PyTuple_SET_ITEM(__pyx_v_t, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 133, __pyx_L1_error)
+  }
+
+  /* "carray.to_py":134
+ *         Py_INCREF(value)
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)
+ *     return t             # <<<<<<<<<<<<<<
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_t);
+  __pyx_r = __pyx_v_t;
+  goto __pyx_L0;
+
+  /* "carray.to_py":125
+ * 
+ * 
+ * @cname("__Pyx_carray_to_tuple_int___5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline tuple __Pyx_carray_to_tuple_int___5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int___5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_XDECREF(__pyx_v_t);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "carray.to_py":113
+ * 
+ * 
+ * @cname("__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline list __Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(int (*__pyx_v_v)[14][100], Py_ssize_t __pyx_v_length) {
+  Py_ssize_t __pyx_v_i;
+  PyObject *__pyx_v_value = 0;
+  PyObject *__pyx_v_l = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  Py_ssize_t __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_", 0);
+
+  /* "carray.to_py":117
+ *     cdef Py_ssize_t i
+ *     cdef object value
+ *     l = PyList_New(length)             # <<<<<<<<<<<<<<
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+*/
+  __pyx_t_1 = PyList_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 117, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_l = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "carray.to_py":118
+ *     cdef object value
+ *     l = PyList_New(length)
+ *     for i in range(length):             # <<<<<<<<<<<<<<
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+*/
+  __pyx_t_2 = __pyx_v_length;
+  __pyx_t_3 = __pyx_t_2;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_i = __pyx_t_4;
+
+    /* "carray.to_py":119
+ *     l = PyList_New(length)
+ *     for i in range(length):
+ *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
+ *         Py_INCREF(value)
+ *         __Pyx_PyList_SET_ITEM(l, i, value)
+*/
+    __pyx_t_1 = __Pyx_carray_to_py_int___5b_100_5d_((__pyx_v_v[((size_t)__pyx_v_i)]), 14); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 119, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
+    __pyx_t_1 = 0;
+
+    /* "carray.to_py":120
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)             # <<<<<<<<<<<<<<
+ *         __Pyx_PyList_SET_ITEM(l, i, value)
+ *     return l
+*/
+    Py_INCREF(__pyx_v_value);
+
+    /* "carray.to_py":121
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+ *         __Pyx_PyList_SET_ITEM(l, i, value)             # <<<<<<<<<<<<<<
+ *     return l
+ * 
+*/
+    __pyx_t_5 = __Pyx_PyList_SET_ITEM(__pyx_v_l, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 121, __pyx_L1_error)
+  }
+
+  /* "carray.to_py":122
+ *         Py_INCREF(value)
+ *         __Pyx_PyList_SET_ITEM(l, i, value)
+ *     return l             # <<<<<<<<<<<<<<
+ * 
+ * 
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_l);
+  __pyx_r = __pyx_v_l;
+  goto __pyx_L0;
+
+  /* "carray.to_py":113
+ * 
+ * 
+ * @cname("__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline list __Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_XDECREF(__pyx_v_l);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "carray.to_py":125
+ * 
+ * 
+ * @cname("__Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline tuple __Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_(int (*__pyx_v_v)[14][100], Py_ssize_t __pyx_v_length) {
+  Py_ssize_t __pyx_v_i;
+  PyObject *__pyx_v_value = 0;
+  PyObject *__pyx_v_t = NULL;
+  PyObject *__pyx_r = NULL;
+  __Pyx_RefNannyDeclarations
+  PyObject *__pyx_t_1 = NULL;
+  Py_ssize_t __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  Py_ssize_t __pyx_t_4;
+  int __pyx_t_5;
+  int __pyx_lineno = 0;
+  const char *__pyx_filename = NULL;
+  int __pyx_clineno = 0;
+  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_", 0);
+
+  /* "carray.to_py":129
+ *     cdef Py_ssize_t i
+ *     cdef object value
+ *     t = PyTuple_New(length)             # <<<<<<<<<<<<<<
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+*/
+  __pyx_t_1 = PyTuple_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 129, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_t = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "carray.to_py":130
+ *     cdef object value
+ *     t = PyTuple_New(length)
+ *     for i in range(length):             # <<<<<<<<<<<<<<
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+*/
+  __pyx_t_2 = __pyx_v_length;
+  __pyx_t_3 = __pyx_t_2;
+  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
+    __pyx_v_i = __pyx_t_4;
+
+    /* "carray.to_py":131
+ *     t = PyTuple_New(length)
+ *     for i in range(length):
+ *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
+ *         Py_INCREF(value)
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)
+*/
+    __pyx_t_1 = __Pyx_carray_to_py_int___5b_100_5d_((__pyx_v_v[((size_t)__pyx_v_i)]), 14); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 131, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
+    __pyx_t_1 = 0;
+
+    /* "carray.to_py":132
+ *     for i in range(length):
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)             # <<<<<<<<<<<<<<
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)
+ *     return t
+*/
+    Py_INCREF(__pyx_v_value);
+
+    /* "carray.to_py":133
+ *         value = v[<size_t> i]
+ *         Py_INCREF(value)
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)             # <<<<<<<<<<<<<<
+ *     return t
+*/
+    __pyx_t_5 = __Pyx_PyTuple_SET_ITEM(__pyx_v_t, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 133, __pyx_L1_error)
+  }
+
+  /* "carray.to_py":134
+ *         Py_INCREF(value)
+ *         __Pyx_PyTuple_SET_ITEM(t, i, value)
+ *     return t             # <<<<<<<<<<<<<<
+*/
+  __Pyx_XDECREF(__pyx_r);
+  __Pyx_INCREF(__pyx_v_t);
+  __pyx_r = __pyx_v_t;
+  goto __pyx_L0;
+
+  /* "carray.to_py":125
+ * 
+ * 
+ * @cname("__Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef inline tuple __Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_(base_type *v, Py_ssize_t length):
+ *     cdef Py_ssize_t i
+*/
+
+  /* function exit code */
+  __pyx_L1_error:;
+  __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int___5b_14_5d__5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __pyx_r = 0;
+  __pyx_L0:;
+  __Pyx_XDECREF(__pyx_v_value);
+  __Pyx_XDECREF(__pyx_v_t);
+  __Pyx_XGIVEREF(__pyx_r);
+  __Pyx_RefNannyFinishContext();
+  return __pyx_r;
+}
+
+/* "carray.from_py":78
+ *     object PyErr_Format(exc, const char *format, ...)
+ * 
+ * @cname("__Pyx_carray_from_py_int___5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef int __Pyx_carray_from_py_int___5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ *     cdef Py_ssize_t i = length
+*/
+
 static int __Pyx_carray_from_py_int___5b_100_5d_(PyObject *__pyx_v_o, int (*__pyx_v_v)[100], Py_ssize_t __pyx_v_length) {
   Py_ssize_t __pyx_v_i;
   PyObject *__pyx_v_item = NULL;
@@ -4013,7 +4726,7 @@ static int __Pyx_carray_from_py_int___5b_100_5d_(PyObject *__pyx_v_o, int (*__py
   return __pyx_r;
 }
 
-static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, int (*__pyx_v_v)[13][100], Py_ssize_t __pyx_v_length) {
+static int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(PyObject *__pyx_v_o, int (*__pyx_v_v)[14][100], Py_ssize_t __pyx_v_length) {
   Py_ssize_t __pyx_v_i;
   PyObject *__pyx_v_item = NULL;
   int __pyx_r;
@@ -4028,16 +4741,16 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
   Py_ssize_t __pyx_t_8;
   PyObject *(*__pyx_t_9)(PyObject *);
   PyObject *__pyx_t_10 = NULL;
-  int __pyx_t_11[13][100];
+  int __pyx_t_11[14][100];
   char const *__pyx_t_12;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_", 0);
+  __Pyx_RefNannySetupContext("__Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_", 0);
 
   /* "carray.from_py":80
- * @cname("__Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_")
- * cdef int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ * @cname("__Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_")
+ * cdef int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
  *     cdef Py_ssize_t i = length             # <<<<<<<<<<<<<<
  *     try:
  *         i = len(o)
@@ -4045,7 +4758,7 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
   __pyx_v_i = __pyx_v_length;
 
   /* "carray.from_py":81
- * cdef int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ * cdef int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
  *     cdef Py_ssize_t i = length
  *     try:             # <<<<<<<<<<<<<<
  *         i = len(o)
@@ -4071,7 +4784,7 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
       __pyx_v_i = __pyx_t_4;
 
       /* "carray.from_py":81
- * cdef int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ * cdef int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
  *     cdef Py_ssize_t i = length
  *     try:             # <<<<<<<<<<<<<<
  *         i = len(o)
@@ -4099,7 +4812,7 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
     goto __pyx_L5_except_error;
 
     /* "carray.from_py":81
- * cdef int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ * cdef int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
  *     cdef Py_ssize_t i = length
  *     try:             # <<<<<<<<<<<<<<
  *         i = len(o)
@@ -4226,8 +4939,8 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
  *         else:
  *             i += 1  # convert index to length
 */
-      if (unlikely((__Pyx_carray_from_py_int___5b_100_5d_(__pyx_v_item, __pyx_t_11, 13) < 0))) __PYX_ERR(1, 89, __pyx_L1_error)
-      memcpy(&((__pyx_v_v[__pyx_v_i])[0]), __pyx_t_11, sizeof((__pyx_v_v[__pyx_v_i])[0]) * (13));
+      if (unlikely((__Pyx_carray_from_py_int___5b_100_5d_(__pyx_v_item, __pyx_t_11, 14) < 0))) __PYX_ERR(1, 89, __pyx_L1_error)
+      memcpy(&((__pyx_v_v[__pyx_v_i])[0]), __pyx_t_11, sizeof((__pyx_v_v[__pyx_v_i])[0]) * (14));
 
       /* "carray.from_py":86
  *         pass
@@ -4322,8 +5035,8 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
   /* "carray.from_py":78
  *     object PyErr_Format(exc, const char *format, ...)
  * 
- * @cname("__Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
- * cdef int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
+ * @cname("__Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_")             # <<<<<<<<<<<<<<
+ * cdef int __Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(object o, base_type *v, Py_ssize_t length) except -1:
  *     cdef Py_ssize_t i = length
 */
 
@@ -4333,7 +5046,7 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_10);
-  __Pyx_AddTraceback("carray.from_py.__Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("carray.from_py.__Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = -1;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_item);
@@ -4341,10 +5054,10 @@ static int __Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(PyObject *__pyx_v_o, 
   return __pyx_r;
 }
 
-/* "scheduler.pyx":28
+/* "scheduler.pyx":34
  *     cdef int hora_max
  * 
- *     def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=19):             # <<<<<<<<<<<<<<
+ *     def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=15):             # <<<<<<<<<<<<<<
  *         """Inicializa el motor de scheduling"""
  *         self.num_maestros = maestros
 */
@@ -4379,75 +5092,75 @@ static int __pyx_pw_9scheduler_15SchedulerEngine_1__init__(PyObject *__pyx_v_sel
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_maestros,&__pyx_mstate_global->__pyx_n_u_materias,&__pyx_mstate_global->__pyx_n_u_grupos,&__pyx_mstate_global->__pyx_n_u_hora_min,&__pyx_mstate_global->__pyx_n_u_hora_max,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_VARARGS(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 28, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 34, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  5:
         values[4] = __Pyx_ArgRef_VARARGS(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_VARARGS(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_VARARGS(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_VARARGS(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_VARARGS(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "__init__", 0) < (0)) __PYX_ERR(0, 28, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "__init__", 0) < (0)) __PYX_ERR(0, 34, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("__init__", 0, 3, 5, i); __PYX_ERR(0, 28, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("__init__", 0, 3, 5, i); __PYX_ERR(0, 34, __pyx_L3_error) }
       }
     } else {
       switch (__pyx_nargs) {
         case  5:
         values[4] = __Pyx_ArgRef_VARARGS(__pyx_args, 4);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[4])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  4:
         values[3] = __Pyx_ArgRef_VARARGS(__pyx_args, 3);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[3])) __PYX_ERR(0, 34, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  3:
         values[2] = __Pyx_ArgRef_VARARGS(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 34, __pyx_L3_error)
         values[1] = __Pyx_ArgRef_VARARGS(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 34, __pyx_L3_error)
         values[0] = __Pyx_ArgRef_VARARGS(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 28, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 34, __pyx_L3_error)
         break;
         default: goto __pyx_L5_argtuple_error;
       }
     }
-    __pyx_v_maestros = __Pyx_PyLong_As_int(values[0]); if (unlikely((__pyx_v_maestros == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L3_error)
-    __pyx_v_materias = __Pyx_PyLong_As_int(values[1]); if (unlikely((__pyx_v_materias == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L3_error)
-    __pyx_v_grupos = __Pyx_PyLong_As_int(values[2]); if (unlikely((__pyx_v_grupos == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L3_error)
+    __pyx_v_maestros = __Pyx_PyLong_As_int(values[0]); if (unlikely((__pyx_v_maestros == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 34, __pyx_L3_error)
+    __pyx_v_materias = __Pyx_PyLong_As_int(values[1]); if (unlikely((__pyx_v_materias == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 34, __pyx_L3_error)
+    __pyx_v_grupos = __Pyx_PyLong_As_int(values[2]); if (unlikely((__pyx_v_grupos == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 34, __pyx_L3_error)
     if (values[3]) {
-      __pyx_v_hora_min = __Pyx_PyLong_As_int(values[3]); if (unlikely((__pyx_v_hora_min == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L3_error)
+      __pyx_v_hora_min = __Pyx_PyLong_As_int(values[3]); if (unlikely((__pyx_v_hora_min == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 34, __pyx_L3_error)
     } else {
       __pyx_v_hora_min = ((int)7);
     }
     if (values[4]) {
-      __pyx_v_hora_max = __Pyx_PyLong_As_int(values[4]); if (unlikely((__pyx_v_hora_max == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 28, __pyx_L3_error)
+      __pyx_v_hora_max = __Pyx_PyLong_As_int(values[4]); if (unlikely((__pyx_v_hora_max == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 34, __pyx_L3_error)
     } else {
-      __pyx_v_hora_max = ((int)19);
+      __pyx_v_hora_max = ((int)15);
     }
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 0, 3, 5, __pyx_nargs); __PYX_ERR(0, 28, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 0, 3, 5, __pyx_nargs); __PYX_ERR(0, 34, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -4471,8 +5184,8 @@ static int __pyx_pw_9scheduler_15SchedulerEngine_1__init__(PyObject *__pyx_v_sel
 static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestros, int __pyx_v_materias, int __pyx_v_grupos, int __pyx_v_hora_min, int __pyx_v_hora_max) {
   int __pyx_r;
 
-  /* "scheduler.pyx":30
- *     def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=19):
+  /* "scheduler.pyx":36
+ *     def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=15):
  *         """Inicializa el motor de scheduling"""
  *         self.num_maestros = maestros             # <<<<<<<<<<<<<<
  *         self.num_materias = materias
@@ -4480,7 +5193,7 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
 */
   __pyx_v_self->num_maestros = __pyx_v_maestros;
 
-  /* "scheduler.pyx":31
+  /* "scheduler.pyx":37
  *         """Inicializa el motor de scheduling"""
  *         self.num_maestros = maestros
  *         self.num_materias = materias             # <<<<<<<<<<<<<<
@@ -4489,7 +5202,7 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
 */
   __pyx_v_self->num_materias = __pyx_v_materias;
 
-  /* "scheduler.pyx":32
+  /* "scheduler.pyx":38
  *         self.num_maestros = maestros
  *         self.num_materias = materias
  *         self.num_grupos = grupos             # <<<<<<<<<<<<<<
@@ -4498,7 +5211,7 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
 */
   __pyx_v_self->num_grupos = __pyx_v_grupos;
 
-  /* "scheduler.pyx":33
+  /* "scheduler.pyx":39
  *         self.num_materias = materias
  *         self.num_grupos = grupos
  *         self.hora_min = hora_min             # <<<<<<<<<<<<<<
@@ -4507,7 +5220,7 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
 */
   __pyx_v_self->hora_min = __pyx_v_hora_min;
 
-  /* "scheduler.pyx":34
+  /* "scheduler.pyx":40
  *         self.num_grupos = grupos
  *         self.hora_min = hora_min
  *         self.hora_max = hora_max             # <<<<<<<<<<<<<<
@@ -4516,25 +5229,34 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
 */
   __pyx_v_self->hora_max = __pyx_v_hora_max;
 
-  /* "scheduler.pyx":37
+  /* "scheduler.pyx":43
  * 
  *         # Inicializar matrices en 0
  *         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))             # <<<<<<<<<<<<<<
  *         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
- * 
+ *         memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))
 */
   (void)(memset(__pyx_v_self->ocupacion_maestros, 0, (sizeof(__pyx_v_self->ocupacion_maestros))));
 
-  /* "scheduler.pyx":38
+  /* "scheduler.pyx":44
  *         # Inicializar matrices en 0
  *         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
  *         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))             # <<<<<<<<<<<<<<
+ *         memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))
  * 
- *         # Inicializar semilla random
 */
   (void)(memset(__pyx_v_self->ocupacion_grupos, 0, (sizeof(__pyx_v_self->ocupacion_grupos))));
 
-  /* "scheduler.pyx":41
+  /* "scheduler.pyx":45
+ *         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
+ *         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
+ *         memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))             # <<<<<<<<<<<<<<
+ * 
+ *         # Inicializar semilla random
+*/
+  (void)(memset(__pyx_v_self->horas_maestro_dia, 0, (sizeof(__pyx_v_self->horas_maestro_dia))));
+
+  /* "scheduler.pyx":48
  * 
  *         # Inicializar semilla random
  *         srand(time(NULL))             # <<<<<<<<<<<<<<
@@ -4543,10 +5265,10 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
 */
   srand(time(NULL));
 
-  /* "scheduler.pyx":28
+  /* "scheduler.pyx":34
  *     cdef int hora_max
  * 
- *     def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=19):             # <<<<<<<<<<<<<<
+ *     def __init__(self, int maestros, int materias, int grupos, int hora_min=7, int hora_max=15):             # <<<<<<<<<<<<<<
  *         """Inicializa el motor de scheduling"""
  *         self.num_maestros = maestros
 */
@@ -4556,11 +5278,11 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
   return __pyx_r;
 }
 
-/* "scheduler.pyx":43
+/* "scheduler.pyx":50
  *         srand(time(NULL))
  * 
  *     cdef bint validar_disponibilidad_maestro(self, int maestro_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Valida que el maestro est disponible en el horario"""
+ *         """Valida que el maestro est disponible en el horario (no empalmes)"""
  *         cdef int hora
 */
 
@@ -4571,52 +5293,80 @@ static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_maestro(s
   int __pyx_t_2;
   int __pyx_t_3;
   int __pyx_t_4;
+  int __pyx_t_5;
 
-  /* "scheduler.pyx":46
- *         """Valida que el maestro est disponible en el horario"""
+  /* "scheduler.pyx":53
+ *         """Valida que el maestro est disponible en el horario (no empalmes)"""
  *         cdef int hora
  *         for hora in range(hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *                 return False
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:
 */
   __pyx_t_1 = __pyx_v_hora_fin;
   __pyx_t_2 = __pyx_t_1;
   for (__pyx_t_3 = __pyx_v_hora_inicio; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_hora = __pyx_t_3;
 
-    /* "scheduler.pyx":47
+    /* "scheduler.pyx":54
  *         cdef int hora
  *         for hora in range(hora_inicio, hora_fin):
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:             # <<<<<<<<<<<<<<
- *                 return False
- *         return True
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:             # <<<<<<<<<<<<<<
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:
+ *                     return False
 */
-    __pyx_t_4 = ((((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_maestro_id]) == 1);
+    __pyx_t_5 = ((__pyx_v_hora - __pyx_v_self->hora_min) >= 0);
+    if (__pyx_t_5) {
+    } else {
+      __pyx_t_4 = __pyx_t_5;
+      goto __pyx_L6_bool_binop_done;
+    }
+    __pyx_t_5 = ((__pyx_v_hora - __pyx_v_self->hora_min) < 14);
+    __pyx_t_4 = __pyx_t_5;
+    __pyx_L6_bool_binop_done:;
     if (__pyx_t_4) {
 
-      /* "scheduler.pyx":48
+      /* "scheduler.pyx":55
  *         for hora in range(hora_inicio, hora_fin):
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *                 return False             # <<<<<<<<<<<<<<
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:             # <<<<<<<<<<<<<<
+ *                     return False
+ *         return True
+*/
+      __pyx_t_4 = ((((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - __pyx_v_self->hora_min)])[__pyx_v_maestro_id]) == 1);
+      if (__pyx_t_4) {
+
+        /* "scheduler.pyx":56
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:
+ *                     return False             # <<<<<<<<<<<<<<
  *         return True
  * 
 */
-      __pyx_r = 0;
-      goto __pyx_L0;
+        __pyx_r = 0;
+        goto __pyx_L0;
 
-      /* "scheduler.pyx":47
+        /* "scheduler.pyx":55
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:             # <<<<<<<<<<<<<<
+ *                     return False
+ *         return True
+*/
+      }
+
+      /* "scheduler.pyx":54
  *         cdef int hora
  *         for hora in range(hora_inicio, hora_fin):
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:             # <<<<<<<<<<<<<<
- *                 return False
- *         return True
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:             # <<<<<<<<<<<<<<
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:
+ *                     return False
 */
     }
   }
 
-  /* "scheduler.pyx":49
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *                 return False
+  /* "scheduler.pyx":57
+ *                 if self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] == 1:
+ *                     return False
  *         return True             # <<<<<<<<<<<<<<
  * 
  *     cdef bint validar_disponibilidad_grupo(self, int grupo_id, int dia, int hora_inicio, int hora_fin):
@@ -4624,92 +5374,11 @@ static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_maestro(s
   __pyx_r = 1;
   goto __pyx_L0;
 
-  /* "scheduler.pyx":43
+  /* "scheduler.pyx":50
  *         srand(time(NULL))
  * 
  *     cdef bint validar_disponibilidad_maestro(self, int maestro_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Valida que el maestro est disponible en el horario"""
- *         cdef int hora
-*/
-
-  /* function exit code */
-  __pyx_L0:;
-  return __pyx_r;
-}
-
-/* "scheduler.pyx":51
- *         return True
- * 
- *     cdef bint validar_disponibilidad_grupo(self, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Valida que el grupo est disponible en el horario"""
- *         cdef int hora
-*/
-
-static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_grupo(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin) {
-  int __pyx_v_hora;
-  int __pyx_r;
-  int __pyx_t_1;
-  int __pyx_t_2;
-  int __pyx_t_3;
-  int __pyx_t_4;
-
-  /* "scheduler.pyx":54
- *         """Valida que el grupo est disponible en el horario"""
- *         cdef int hora
- *         for hora in range(hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             if self.ocupacion_grupos[dia][hora - 7][grupo_id] == 1:
- *                 return False
-*/
-  __pyx_t_1 = __pyx_v_hora_fin;
-  __pyx_t_2 = __pyx_t_1;
-  for (__pyx_t_3 = __pyx_v_hora_inicio; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
-    __pyx_v_hora = __pyx_t_3;
-
-    /* "scheduler.pyx":55
- *         cdef int hora
- *         for hora in range(hora_inicio, hora_fin):
- *             if self.ocupacion_grupos[dia][hora - 7][grupo_id] == 1:             # <<<<<<<<<<<<<<
- *                 return False
- *         return True
-*/
-    __pyx_t_4 = ((((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_grupo_id]) == 1);
-    if (__pyx_t_4) {
-
-      /* "scheduler.pyx":56
- *         for hora in range(hora_inicio, hora_fin):
- *             if self.ocupacion_grupos[dia][hora - 7][grupo_id] == 1:
- *                 return False             # <<<<<<<<<<<<<<
- *         return True
- * 
-*/
-      __pyx_r = 0;
-      goto __pyx_L0;
-
-      /* "scheduler.pyx":55
- *         cdef int hora
- *         for hora in range(hora_inicio, hora_fin):
- *             if self.ocupacion_grupos[dia][hora - 7][grupo_id] == 1:             # <<<<<<<<<<<<<<
- *                 return False
- *         return True
-*/
-    }
-  }
-
-  /* "scheduler.pyx":57
- *             if self.ocupacion_grupos[dia][hora - 7][grupo_id] == 1:
- *                 return False
- *         return True             # <<<<<<<<<<<<<<
- * 
- *     cdef int contar_horas_seguidas(self, int maestro_id, int dia, int hora_inicio):
-*/
-  __pyx_r = 1;
-  goto __pyx_L0;
-
-  /* "scheduler.pyx":51
- *         return True
- * 
- *     cdef bint validar_disponibilidad_grupo(self, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Valida que el grupo est disponible en el horario"""
+ *         """Valida que el maestro est disponible en el horario (no empalmes)"""
  *         cdef int hora
 */
 
@@ -4721,109 +5390,13 @@ static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_grupo(str
 /* "scheduler.pyx":59
  *         return True
  * 
- *     cdef int contar_horas_seguidas(self, int maestro_id, int dia, int hora_inicio):             # <<<<<<<<<<<<<<
- *         """Cuenta cuntas horas seguidas tiene el maestro antes de esta hora"""
- *         cdef int contador = 0
+ *     cdef bint validar_disponibilidad_grupo(self, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
+ *         """Valida que el grupo est disponible en el horario (no empalmes)"""
+ *         cdef int hora
 */
 
-static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_seguidas(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_dia, int __pyx_v_hora_inicio) {
-  int __pyx_v_contador;
+static int __pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_grupo(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin) {
   int __pyx_v_hora;
-  int __pyx_r;
-  int __pyx_t_1;
-  int __pyx_t_2;
-
-  /* "scheduler.pyx":61
- *     cdef int contar_horas_seguidas(self, int maestro_id, int dia, int hora_inicio):
- *         """Cuenta cuntas horas seguidas tiene el maestro antes de esta hora"""
- *         cdef int contador = 0             # <<<<<<<<<<<<<<
- *         cdef int hora = hora_inicio - 1
- * 
-*/
-  __pyx_v_contador = 0;
-
-  /* "scheduler.pyx":62
- *         """Cuenta cuntas horas seguidas tiene el maestro antes de esta hora"""
- *         cdef int contador = 0
- *         cdef int hora = hora_inicio - 1             # <<<<<<<<<<<<<<
- * 
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
-*/
-  __pyx_v_hora = (__pyx_v_hora_inicio - 1);
-
-  /* "scheduler.pyx":64
- *         cdef int hora = hora_inicio - 1
- * 
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:             # <<<<<<<<<<<<<<
- *             contador += 1
- *             hora -= 1
-*/
-  while (1) {
-    __pyx_t_2 = (__pyx_v_hora >= 7);
-    if (__pyx_t_2) {
-    } else {
-      __pyx_t_1 = __pyx_t_2;
-      goto __pyx_L5_bool_binop_done;
-    }
-    __pyx_t_2 = ((((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_maestro_id]) == 1);
-    __pyx_t_1 = __pyx_t_2;
-    __pyx_L5_bool_binop_done:;
-    if (!__pyx_t_1) break;
-
-    /* "scheduler.pyx":65
- * 
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *             contador += 1             # <<<<<<<<<<<<<<
- *             hora -= 1
- * 
-*/
-    __pyx_v_contador = (__pyx_v_contador + 1);
-
-    /* "scheduler.pyx":66
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *             contador += 1
- *             hora -= 1             # <<<<<<<<<<<<<<
- * 
- *         return contador
-*/
-    __pyx_v_hora = (__pyx_v_hora - 1);
-  }
-
-  /* "scheduler.pyx":68
- *             hora -= 1
- * 
- *         return contador             # <<<<<<<<<<<<<<
- * 
- *     cdef int contar_horas_libres(self, int maestro_id, int dia, int hora_inicio):
-*/
-  __pyx_r = __pyx_v_contador;
-  goto __pyx_L0;
-
-  /* "scheduler.pyx":59
- *         return True
- * 
- *     cdef int contar_horas_seguidas(self, int maestro_id, int dia, int hora_inicio):             # <<<<<<<<<<<<<<
- *         """Cuenta cuntas horas seguidas tiene el maestro antes de esta hora"""
- *         cdef int contador = 0
-*/
-
-  /* function exit code */
-  __pyx_L0:;
-  return __pyx_r;
-}
-
-/* "scheduler.pyx":70
- *         return contador
- * 
- *     cdef int contar_horas_libres(self, int maestro_id, int dia, int hora_inicio):             # <<<<<<<<<<<<<<
- *         """Cuenta horas libres consecutivas antes de esta hora"""
- *         cdef int contador = 0
-*/
-
-static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_libres(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_dia, int __pyx_v_hora_inicio) {
-  int __pyx_v_contador;
-  int __pyx_v_hora;
-  int __pyx_v_tiene_clases_antes;
   int __pyx_r;
   int __pyx_t_1;
   int __pyx_t_2;
@@ -4831,378 +5404,339 @@ static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_libres(struct __pyx
   int __pyx_t_4;
   int __pyx_t_5;
 
-  /* "scheduler.pyx":72
- *     cdef int contar_horas_libres(self, int maestro_id, int dia, int hora_inicio):
- *         """Cuenta horas libres consecutivas antes de esta hora"""
- *         cdef int contador = 0             # <<<<<<<<<<<<<<
- *         cdef int hora = hora_inicio - 1
- *         cdef bint tiene_clases_antes = False
+  /* "scheduler.pyx":62
+ *         """Valida que el grupo est disponible en el horario (no empalmes)"""
+ *         cdef int hora
+ *         for hora in range(hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:
 */
-  __pyx_v_contador = 0;
-
-  /* "scheduler.pyx":73
- *         """Cuenta horas libres consecutivas antes de esta hora"""
- *         cdef int contador = 0
- *         cdef int hora = hora_inicio - 1             # <<<<<<<<<<<<<<
- *         cdef bint tiene_clases_antes = False
- * 
-*/
-  __pyx_v_hora = (__pyx_v_hora_inicio - 1);
-
-  /* "scheduler.pyx":74
- *         cdef int contador = 0
- *         cdef int hora = hora_inicio - 1
- *         cdef bint tiene_clases_antes = False             # <<<<<<<<<<<<<<
- * 
- *         # Verificar si tiene clases antes en el da
-*/
-  __pyx_v_tiene_clases_antes = 0;
-
-  /* "scheduler.pyx":77
- * 
- *         # Verificar si tiene clases antes en el da
- *         for hora in range(7, hora_inicio):             # <<<<<<<<<<<<<<
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *                 tiene_clases_antes = True
-*/
-  __pyx_t_1 = __pyx_v_hora_inicio;
+  __pyx_t_1 = __pyx_v_hora_fin;
   __pyx_t_2 = __pyx_t_1;
-  for (__pyx_t_3 = 7; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
+  for (__pyx_t_3 = __pyx_v_hora_inicio; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_hora = __pyx_t_3;
 
-    /* "scheduler.pyx":78
- *         # Verificar si tiene clases antes en el da
- *         for hora in range(7, hora_inicio):
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:             # <<<<<<<<<<<<<<
- *                 tiene_clases_antes = True
- *                 break
+    /* "scheduler.pyx":63
+ *         cdef int hora
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:             # <<<<<<<<<<<<<<
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:
+ *                     return False
 */
-    __pyx_t_4 = ((((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_maestro_id]) == 1);
-    if (__pyx_t_4) {
-
-      /* "scheduler.pyx":79
- *         for hora in range(7, hora_inicio):
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *                 tiene_clases_antes = True             # <<<<<<<<<<<<<<
- *                 break
- * 
-*/
-      __pyx_v_tiene_clases_antes = 1;
-
-      /* "scheduler.pyx":80
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:
- *                 tiene_clases_antes = True
- *                 break             # <<<<<<<<<<<<<<
- * 
- *         if not tiene_clases_antes:
-*/
-      goto __pyx_L4_break;
-
-      /* "scheduler.pyx":78
- *         # Verificar si tiene clases antes en el da
- *         for hora in range(7, hora_inicio):
- *             if self.ocupacion_maestros[dia][hora - 7][maestro_id] == 1:             # <<<<<<<<<<<<<<
- *                 tiene_clases_antes = True
- *                 break
-*/
-    }
-  }
-  __pyx_L4_break:;
-
-  /* "scheduler.pyx":82
- *                 break
- * 
- *         if not tiene_clases_antes:             # <<<<<<<<<<<<<<
- *             return 0
- * 
-*/
-  __pyx_t_4 = (!__pyx_v_tiene_clases_antes);
-  if (__pyx_t_4) {
-
-    /* "scheduler.pyx":83
- * 
- *         if not tiene_clases_antes:
- *             return 0             # <<<<<<<<<<<<<<
- * 
- *         # Contar horas libres consecutivas
-*/
-    __pyx_r = 0;
-    goto __pyx_L0;
-
-    /* "scheduler.pyx":82
- *                 break
- * 
- *         if not tiene_clases_antes:             # <<<<<<<<<<<<<<
- *             return 0
- * 
-*/
-  }
-
-  /* "scheduler.pyx":86
- * 
- *         # Contar horas libres consecutivas
- *         hora = hora_inicio - 1             # <<<<<<<<<<<<<<
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 0:
- *             contador += 1
-*/
-  __pyx_v_hora = (__pyx_v_hora_inicio - 1);
-
-  /* "scheduler.pyx":87
- *         # Contar horas libres consecutivas
- *         hora = hora_inicio - 1
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 0:             # <<<<<<<<<<<<<<
- *             contador += 1
- *             hora -= 1
-*/
-  while (1) {
-    __pyx_t_5 = (__pyx_v_hora >= 7);
+    __pyx_t_5 = ((__pyx_v_hora - __pyx_v_self->hora_min) >= 0);
     if (__pyx_t_5) {
     } else {
       __pyx_t_4 = __pyx_t_5;
-      goto __pyx_L9_bool_binop_done;
+      goto __pyx_L6_bool_binop_done;
     }
-    __pyx_t_5 = ((((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_maestro_id]) == 0);
+    __pyx_t_5 = ((__pyx_v_hora - __pyx_v_self->hora_min) < 14);
     __pyx_t_4 = __pyx_t_5;
-    __pyx_L9_bool_binop_done:;
-    if (!__pyx_t_4) break;
+    __pyx_L6_bool_binop_done:;
+    if (__pyx_t_4) {
 
-    /* "scheduler.pyx":88
- *         hora = hora_inicio - 1
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 0:
- *             contador += 1             # <<<<<<<<<<<<<<
- *             hora -= 1
- * 
-*/
-    __pyx_v_contador = (__pyx_v_contador + 1);
-
-    /* "scheduler.pyx":89
- *         while hora >= 7 and self.ocupacion_maestros[dia][hora - 7][maestro_id] == 0:
- *             contador += 1
- *             hora -= 1             # <<<<<<<<<<<<<<
- * 
- *         return contador
-*/
-    __pyx_v_hora = (__pyx_v_hora - 1);
-  }
-
-  /* "scheduler.pyx":91
- *             hora -= 1
- * 
- *         return contador             # <<<<<<<<<<<<<<
- * 
- *     cdef bint validar_restricciones(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
-*/
-  __pyx_r = __pyx_v_contador;
-  goto __pyx_L0;
-
-  /* "scheduler.pyx":70
- *         return contador
- * 
- *     cdef int contar_horas_libres(self, int maestro_id, int dia, int hora_inicio):             # <<<<<<<<<<<<<<
- *         """Cuenta horas libres consecutivas antes de esta hora"""
- *         cdef int contador = 0
-*/
-
-  /* function exit code */
-  __pyx_L0:;
-  return __pyx_r;
-}
-
-/* "scheduler.pyx":93
- *         return contador
- * 
- *     cdef bint validar_restricciones(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Valida todas las restricciones del problema"""
- * 
-*/
-
-static int __pyx_f_9scheduler_15SchedulerEngine_validar_restricciones(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin) {
-  int __pyx_v_horas_seguidas;
-  int __pyx_v_duracion;
-  int __pyx_v_horas_libres;
-  int __pyx_r;
-  int __pyx_t_1;
-  int __pyx_t_2;
-  int __pyx_t_3;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-
-  /* "scheduler.pyx":97
- * 
- *         # 1. Validar disponibilidad de maestro y grupo
- *         if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  __pyx_t_1 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->validar_disponibilidad_maestro(__pyx_v_self, __pyx_v_maestro_id, __pyx_v_dia, __pyx_v_hora_inicio, __pyx_v_hora_fin); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 97, __pyx_L1_error)
-  __pyx_t_2 = (!__pyx_t_1);
-  if (__pyx_t_2) {
-
-    /* "scheduler.pyx":98
- *         # 1. Validar disponibilidad de maestro y grupo
- *         if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_inicio, hora_fin):
- *             return False             # <<<<<<<<<<<<<<
- * 
- *         if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_inicio, hora_fin):
-*/
-    __pyx_r = 0;
-    goto __pyx_L0;
-
-    /* "scheduler.pyx":97
- * 
- *         # 1. Validar disponibilidad de maestro y grupo
- *         if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  }
-
-  /* "scheduler.pyx":100
- *             return False
- * 
- *         if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  __pyx_t_2 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->validar_disponibilidad_grupo(__pyx_v_self, __pyx_v_grupo_id, __pyx_v_dia, __pyx_v_hora_inicio, __pyx_v_hora_fin); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 100, __pyx_L1_error)
-  __pyx_t_1 = (!__pyx_t_2);
-  if (__pyx_t_1) {
-
-    /* "scheduler.pyx":101
- * 
- *         if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_inicio, hora_fin):
- *             return False             # <<<<<<<<<<<<<<
- * 
- *         # 2. No ms de 3 horas seguidas
-*/
-    __pyx_r = 0;
-    goto __pyx_L0;
-
-    /* "scheduler.pyx":100
- *             return False
- * 
- *         if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  }
-
-  /* "scheduler.pyx":104
- * 
- *         # 2. No ms de 3 horas seguidas
- *         cdef int horas_seguidas = self.contar_horas_seguidas(maestro_id, dia, hora_inicio)             # <<<<<<<<<<<<<<
- *         cdef int duracion = hora_fin - hora_inicio
- * 
-*/
-  __pyx_t_3 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->contar_horas_seguidas(__pyx_v_self, __pyx_v_maestro_id, __pyx_v_dia, __pyx_v_hora_inicio); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 104, __pyx_L1_error)
-  __pyx_v_horas_seguidas = __pyx_t_3;
-
-  /* "scheduler.pyx":105
- *         # 2. No ms de 3 horas seguidas
- *         cdef int horas_seguidas = self.contar_horas_seguidas(maestro_id, dia, hora_inicio)
- *         cdef int duracion = hora_fin - hora_inicio             # <<<<<<<<<<<<<<
- * 
- *         if horas_seguidas + duracion > 3:
-*/
-  __pyx_v_duracion = (__pyx_v_hora_fin - __pyx_v_hora_inicio);
-
-  /* "scheduler.pyx":107
- *         cdef int duracion = hora_fin - hora_inicio
- * 
- *         if horas_seguidas + duracion > 3:             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  __pyx_t_1 = ((__pyx_v_horas_seguidas + __pyx_v_duracion) > 3);
-  if (__pyx_t_1) {
-
-    /* "scheduler.pyx":108
- * 
- *         if horas_seguidas + duracion > 3:
- *             return False             # <<<<<<<<<<<<<<
- * 
- *         # 3. No ms de 2 horas libres seguidas
-*/
-    __pyx_r = 0;
-    goto __pyx_L0;
-
-    /* "scheduler.pyx":107
- *         cdef int duracion = hora_fin - hora_inicio
- * 
- *         if horas_seguidas + duracion > 3:             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  }
-
-  /* "scheduler.pyx":111
- * 
- *         # 3. No ms de 2 horas libres seguidas
- *         cdef int horas_libres = self.contar_horas_libres(maestro_id, dia, hora_inicio)             # <<<<<<<<<<<<<<
- *         if horas_libres > 2:
- *             return False
-*/
-  __pyx_t_3 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->contar_horas_libres(__pyx_v_self, __pyx_v_maestro_id, __pyx_v_dia, __pyx_v_hora_inicio); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 111, __pyx_L1_error)
-  __pyx_v_horas_libres = __pyx_t_3;
-
-  /* "scheduler.pyx":112
- *         # 3. No ms de 2 horas libres seguidas
- *         cdef int horas_libres = self.contar_horas_libres(maestro_id, dia, hora_inicio)
- *         if horas_libres > 2:             # <<<<<<<<<<<<<<
- *             return False
- * 
-*/
-  __pyx_t_1 = (__pyx_v_horas_libres > 2);
-  if (__pyx_t_1) {
-
-    /* "scheduler.pyx":113
- *         cdef int horas_libres = self.contar_horas_libres(maestro_id, dia, hora_inicio)
- *         if horas_libres > 2:
- *             return False             # <<<<<<<<<<<<<<
- * 
+      /* "scheduler.pyx":64
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:             # <<<<<<<<<<<<<<
+ *                     return False
  *         return True
 */
-    __pyx_r = 0;
-    goto __pyx_L0;
+      __pyx_t_4 = ((((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[(__pyx_v_hora - __pyx_v_self->hora_min)])[__pyx_v_grupo_id]) == 1);
+      if (__pyx_t_4) {
 
-    /* "scheduler.pyx":112
- *         # 3. No ms de 2 horas libres seguidas
- *         cdef int horas_libres = self.contar_horas_libres(maestro_id, dia, hora_inicio)
- *         if horas_libres > 2:             # <<<<<<<<<<<<<<
- *             return False
+        /* "scheduler.pyx":65
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:
+ *                     return False             # <<<<<<<<<<<<<<
+ *         return True
  * 
 */
+        __pyx_r = 0;
+        goto __pyx_L0;
+
+        /* "scheduler.pyx":64
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:             # <<<<<<<<<<<<<<
+ *                     return False
+ *         return True
+*/
+      }
+
+      /* "scheduler.pyx":63
+ *         cdef int hora
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:             # <<<<<<<<<<<<<<
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:
+ *                     return False
+*/
+    }
   }
 
-  /* "scheduler.pyx":115
- *             return False
- * 
+  /* "scheduler.pyx":66
+ *                 if self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] == 1:
+ *                     return False
  *         return True             # <<<<<<<<<<<<<<
  * 
- *     cdef void marcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
+ *     cdef int contar_horas_grupo_dia(self, int grupo_id, int dia):
 */
   __pyx_r = 1;
   goto __pyx_L0;
 
-  /* "scheduler.pyx":93
- *         return contador
+  /* "scheduler.pyx":59
+ *         return True
  * 
- *     cdef bint validar_restricciones(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Valida todas las restricciones del problema"""
- * 
+ *     cdef bint validar_disponibilidad_grupo(self, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
+ *         """Valida que el grupo est disponible en el horario (no empalmes)"""
+ *         cdef int hora
 */
 
   /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_AddTraceback("scheduler.SchedulerEngine.validar_restricciones", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
   __pyx_L0:;
   return __pyx_r;
 }
 
-/* "scheduler.pyx":117
+/* "scheduler.pyx":68
  *         return True
+ * 
+ *     cdef int contar_horas_grupo_dia(self, int grupo_id, int dia):             # <<<<<<<<<<<<<<
+ *         """Cuenta cuntas horas tiene el grupo asignadas en un da"""
+ *         cdef int contador = 0
+*/
+
+static int __pyx_f_9scheduler_15SchedulerEngine_contar_horas_grupo_dia(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia) {
+  int __pyx_v_contador;
+  int __pyx_v_hora;
+  int __pyx_r;
+  int __pyx_t_1;
+  int __pyx_t_2;
+
+  /* "scheduler.pyx":70
+ *     cdef int contar_horas_grupo_dia(self, int grupo_id, int dia):
+ *         """Cuenta cuntas horas tiene el grupo asignadas en un da"""
+ *         cdef int contador = 0             # <<<<<<<<<<<<<<
+ *         cdef int hora
+ *         for hora in range(14):  # 14 slots posibles
+*/
+  __pyx_v_contador = 0;
+
+  /* "scheduler.pyx":72
+ *         cdef int contador = 0
+ *         cdef int hora
+ *         for hora in range(14):  # 14 slots posibles             # <<<<<<<<<<<<<<
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 contador += 1
+*/
+  for (__pyx_t_1 = 0; __pyx_t_1 < 14; __pyx_t_1+=1) {
+    __pyx_v_hora = __pyx_t_1;
+
+    /* "scheduler.pyx":73
+ *         cdef int hora
+ *         for hora in range(14):  # 14 slots posibles
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:             # <<<<<<<<<<<<<<
+ *                 contador += 1
+ *         return contador
+*/
+    __pyx_t_2 = ((((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[__pyx_v_hora])[__pyx_v_grupo_id]) == 1);
+    if (__pyx_t_2) {
+
+      /* "scheduler.pyx":74
+ *         for hora in range(14):  # 14 slots posibles
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 contador += 1             # <<<<<<<<<<<<<<
+ *         return contador
+ * 
+*/
+      __pyx_v_contador = (__pyx_v_contador + 1);
+
+      /* "scheduler.pyx":73
+ *         cdef int hora
+ *         for hora in range(14):  # 14 slots posibles
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:             # <<<<<<<<<<<<<<
+ *                 contador += 1
+ *         return contador
+*/
+    }
+  }
+
+  /* "scheduler.pyx":75
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 contador += 1
+ *         return contador             # <<<<<<<<<<<<<<
+ * 
+ *     cdef int obtener_siguiente_hora_libre(self, int grupo_id, int dia):
+*/
+  __pyx_r = __pyx_v_contador;
+  goto __pyx_L0;
+
+  /* "scheduler.pyx":68
+ *         return True
+ * 
+ *     cdef int contar_horas_grupo_dia(self, int grupo_id, int dia):             # <<<<<<<<<<<<<<
+ *         """Cuenta cuntas horas tiene el grupo asignadas en un da"""
+ *         cdef int contador = 0
+*/
+
+  /* function exit code */
+  __pyx_L0:;
+  return __pyx_r;
+}
+
+/* "scheduler.pyx":77
+ *         return contador
+ * 
+ *     cdef int obtener_siguiente_hora_libre(self, int grupo_id, int dia):             # <<<<<<<<<<<<<<
+ *         """Obtiene la siguiente hora libre continua para el grupo en ese da"""
+ *         cdef int hora
+*/
+
+static int __pyx_f_9scheduler_15SchedulerEngine_obtener_siguiente_hora_libre(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_grupo_id, int __pyx_v_dia) {
+  int __pyx_v_hora;
+  int __pyx_v_primera_ocupada;
+  int __pyx_v_ultima_ocupada;
+  int __pyx_r;
+  int __pyx_t_1;
+  int __pyx_t_2;
+
+  /* "scheduler.pyx":80
+ *         """Obtiene la siguiente hora libre continua para el grupo en ese da"""
+ *         cdef int hora
+ *         cdef int primera_ocupada = -1             # <<<<<<<<<<<<<<
+ *         cdef int ultima_ocupada = -1
+ * 
+*/
+  __pyx_v_primera_ocupada = -1;
+
+  /* "scheduler.pyx":81
+ *         cdef int hora
+ *         cdef int primera_ocupada = -1
+ *         cdef int ultima_ocupada = -1             # <<<<<<<<<<<<<<
+ * 
+ *         # Encontrar primera y ltima hora ocupada
+*/
+  __pyx_v_ultima_ocupada = -1;
+
+  /* "scheduler.pyx":84
+ * 
+ *         # Encontrar primera y ltima hora ocupada
+ *         for hora in range(14):             # <<<<<<<<<<<<<<
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 if primera_ocupada == -1:
+*/
+  for (__pyx_t_1 = 0; __pyx_t_1 < 14; __pyx_t_1+=1) {
+    __pyx_v_hora = __pyx_t_1;
+
+    /* "scheduler.pyx":85
+ *         # Encontrar primera y ltima hora ocupada
+ *         for hora in range(14):
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:             # <<<<<<<<<<<<<<
+ *                 if primera_ocupada == -1:
+ *                     primera_ocupada = hora
+*/
+    __pyx_t_2 = ((((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[__pyx_v_hora])[__pyx_v_grupo_id]) == 1);
+    if (__pyx_t_2) {
+
+      /* "scheduler.pyx":86
+ *         for hora in range(14):
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 if primera_ocupada == -1:             # <<<<<<<<<<<<<<
+ *                     primera_ocupada = hora
+ *                 ultima_ocupada = hora
+*/
+      __pyx_t_2 = (__pyx_v_primera_ocupada == -1L);
+      if (__pyx_t_2) {
+
+        /* "scheduler.pyx":87
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 if primera_ocupada == -1:
+ *                     primera_ocupada = hora             # <<<<<<<<<<<<<<
+ *                 ultima_ocupada = hora
+ * 
+*/
+        __pyx_v_primera_ocupada = __pyx_v_hora;
+
+        /* "scheduler.pyx":86
+ *         for hora in range(14):
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:
+ *                 if primera_ocupada == -1:             # <<<<<<<<<<<<<<
+ *                     primera_ocupada = hora
+ *                 ultima_ocupada = hora
+*/
+      }
+
+      /* "scheduler.pyx":88
+ *                 if primera_ocupada == -1:
+ *                     primera_ocupada = hora
+ *                 ultima_ocupada = hora             # <<<<<<<<<<<<<<
+ * 
+ *         # Si no hay horas ocupadas, empezar desde el inicio
+*/
+      __pyx_v_ultima_ocupada = __pyx_v_hora;
+
+      /* "scheduler.pyx":85
+ *         # Encontrar primera y ltima hora ocupada
+ *         for hora in range(14):
+ *             if self.ocupacion_grupos[dia][hora][grupo_id] == 1:             # <<<<<<<<<<<<<<
+ *                 if primera_ocupada == -1:
+ *                     primera_ocupada = hora
+*/
+    }
+  }
+
+  /* "scheduler.pyx":91
+ * 
+ *         # Si no hay horas ocupadas, empezar desde el inicio
+ *         if primera_ocupada == -1:             # <<<<<<<<<<<<<<
+ *             return self.hora_min
+ * 
+*/
+  __pyx_t_2 = (__pyx_v_primera_ocupada == -1L);
+  if (__pyx_t_2) {
+
+    /* "scheduler.pyx":92
+ *         # Si no hay horas ocupadas, empezar desde el inicio
+ *         if primera_ocupada == -1:
+ *             return self.hora_min             # <<<<<<<<<<<<<<
+ * 
+ *         # Retornar la siguiente hora despus de la ltima ocupada
+*/
+    __pyx_r = __pyx_v_self->hora_min;
+    goto __pyx_L0;
+
+    /* "scheduler.pyx":91
+ * 
+ *         # Si no hay horas ocupadas, empezar desde el inicio
+ *         if primera_ocupada == -1:             # <<<<<<<<<<<<<<
+ *             return self.hora_min
+ * 
+*/
+  }
+
+  /* "scheduler.pyx":95
+ * 
+ *         # Retornar la siguiente hora despus de la ltima ocupada
+ *         return self.hora_min + ultima_ocupada + 1             # <<<<<<<<<<<<<<
+ * 
+ *     cdef void marcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
+*/
+  __pyx_r = ((__pyx_v_self->hora_min + __pyx_v_ultima_ocupada) + 1);
+  goto __pyx_L0;
+
+  /* "scheduler.pyx":77
+ *         return contador
+ * 
+ *     cdef int obtener_siguiente_hora_libre(self, int grupo_id, int dia):             # <<<<<<<<<<<<<<
+ *         """Obtiene la siguiente hora libre continua para el grupo en ese da"""
+ *         cdef int hora
+*/
+
+  /* function exit code */
+  __pyx_L0:;
+  return __pyx_r;
+}
+
+/* "scheduler.pyx":97
+ *         return self.hora_min + ultima_ocupada + 1
  * 
  *     cdef void marcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
  *         """Marca las horas como ocupadas para maestro y grupo"""
@@ -5211,43 +5745,112 @@ static int __pyx_f_9scheduler_15SchedulerEngine_validar_restricciones(struct __p
 
 static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin) {
   int __pyx_v_hora;
+  int __pyx_v_duracion;
   int __pyx_t_1;
   int __pyx_t_2;
   int __pyx_t_3;
+  int __pyx_t_4;
+  int __pyx_t_5;
 
-  /* "scheduler.pyx":120
+  /* "scheduler.pyx":100
  *         """Marca las horas como ocupadas para maestro y grupo"""
  *         cdef int hora
+ *         cdef int duracion = hora_fin - hora_inicio             # <<<<<<<<<<<<<<
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+*/
+  __pyx_v_duracion = (__pyx_v_hora_fin - __pyx_v_hora_inicio);
+
+  /* "scheduler.pyx":101
+ *         cdef int hora
+ *         cdef int duracion = hora_fin - hora_inicio
  *         for hora in range(hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             self.ocupacion_maestros[dia][hora - 7][maestro_id] = 1
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 1
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
 */
   __pyx_t_1 = __pyx_v_hora_fin;
   __pyx_t_2 = __pyx_t_1;
   for (__pyx_t_3 = __pyx_v_hora_inicio; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_hora = __pyx_t_3;
 
-    /* "scheduler.pyx":121
- *         cdef int hora
+    /* "scheduler.pyx":102
+ *         cdef int duracion = hora_fin - hora_inicio
  *         for hora in range(hora_inicio, hora_fin):
- *             self.ocupacion_maestros[dia][hora - 7][maestro_id] = 1             # <<<<<<<<<<<<<<
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 1
- * 
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:             # <<<<<<<<<<<<<<
+ *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
+ *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
 */
-    (((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_maestro_id]) = 1;
+    __pyx_t_5 = ((__pyx_v_hora - __pyx_v_self->hora_min) >= 0);
+    if (__pyx_t_5) {
+    } else {
+      __pyx_t_4 = __pyx_t_5;
+      goto __pyx_L6_bool_binop_done;
+    }
+    __pyx_t_5 = ((__pyx_v_hora - __pyx_v_self->hora_min) < 14);
+    __pyx_t_4 = __pyx_t_5;
+    __pyx_L6_bool_binop_done:;
+    if (__pyx_t_4) {
 
-    /* "scheduler.pyx":122
+      /* "scheduler.pyx":103
  *         for hora in range(hora_inicio, hora_fin):
- *             self.ocupacion_maestros[dia][hora - 7][maestro_id] = 1
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 1             # <<<<<<<<<<<<<<
- * 
- *     cdef void desmarcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1             # <<<<<<<<<<<<<<
+ *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
+ *         # Actualizar contador de horas del maestro en ese da
 */
-    (((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_grupo_id]) = 1;
+      (((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - __pyx_v_self->hora_min)])[__pyx_v_maestro_id]) = 1;
+
+      /* "scheduler.pyx":104
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
+ *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
+ *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1             # <<<<<<<<<<<<<<
+ *         # Actualizar contador de horas del maestro en ese da
+ *         if maestro_id < 100:
+*/
+      (((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[(__pyx_v_hora - __pyx_v_self->hora_min)])[__pyx_v_grupo_id]) = 1;
+
+      /* "scheduler.pyx":102
+ *         cdef int duracion = hora_fin - hora_inicio
+ *         for hora in range(hora_inicio, hora_fin):
+ *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:             # <<<<<<<<<<<<<<
+ *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
+ *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
+*/
+    }
   }
 
-  /* "scheduler.pyx":117
- *         return True
+  /* "scheduler.pyx":106
+ *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
+ *         # Actualizar contador de horas del maestro en ese da
+ *         if maestro_id < 100:             # <<<<<<<<<<<<<<
+ *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ * 
+*/
+  __pyx_t_4 = (__pyx_v_maestro_id < 0x64);
+  if (__pyx_t_4) {
+
+    /* "scheduler.pyx":107
+ *         # Actualizar contador de horas del maestro en ese da
+ *         if maestro_id < 100:
+ *             self.horas_maestro_dia[maestro_id][dia] += duracion             # <<<<<<<<<<<<<<
+ * 
+ *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):
+*/
+    __pyx_t_1 = __pyx_v_maestro_id;
+    __pyx_t_2 = __pyx_v_dia;
+    ((__pyx_v_self->horas_maestro_dia[__pyx_t_1])[__pyx_t_2]) = (((__pyx_v_self->horas_maestro_dia[__pyx_t_1])[__pyx_t_2]) + __pyx_v_duracion);
+
+    /* "scheduler.pyx":106
+ *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
+ *         # Actualizar contador de horas del maestro en ese da
+ *         if maestro_id < 100:             # <<<<<<<<<<<<<<
+ *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ * 
+*/
+  }
+
+  /* "scheduler.pyx":97
+ *         return self.hora_min + ultima_ocupada + 1
  * 
  *     cdef void marcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
  *         """Marca las horas como ocupadas para maestro y grupo"""
@@ -5257,68 +5860,12 @@ static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj
   /* function exit code */
 }
 
-/* "scheduler.pyx":124
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 1
- * 
- *     cdef void desmarcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Desmarca las horas como ocupadas (para backtracking)"""
- *         cdef int hora
-*/
-
-static void __pyx_f_9scheduler_15SchedulerEngine_desmarcar_ocupado(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, int __pyx_v_maestro_id, int __pyx_v_grupo_id, int __pyx_v_dia, int __pyx_v_hora_inicio, int __pyx_v_hora_fin) {
-  int __pyx_v_hora;
-  int __pyx_t_1;
-  int __pyx_t_2;
-  int __pyx_t_3;
-
-  /* "scheduler.pyx":127
- *         """Desmarca las horas como ocupadas (para backtracking)"""
- *         cdef int hora
- *         for hora in range(hora_inicio, hora_fin):             # <<<<<<<<<<<<<<
- *             self.ocupacion_maestros[dia][hora - 7][maestro_id] = 0
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0
-*/
-  __pyx_t_1 = __pyx_v_hora_fin;
-  __pyx_t_2 = __pyx_t_1;
-  for (__pyx_t_3 = __pyx_v_hora_inicio; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
-    __pyx_v_hora = __pyx_t_3;
-
-    /* "scheduler.pyx":128
- *         cdef int hora
- *         for hora in range(hora_inicio, hora_fin):
- *             self.ocupacion_maestros[dia][hora - 7][maestro_id] = 0             # <<<<<<<<<<<<<<
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0
- * 
-*/
-    (((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_maestro_id]) = 0;
-
-    /* "scheduler.pyx":129
- *         for hora in range(hora_inicio, hora_fin):
- *             self.ocupacion_maestros[dia][hora - 7][maestro_id] = 0
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0             # <<<<<<<<<<<<<<
- * 
- *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):
-*/
-    (((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[(__pyx_v_hora - 7)])[__pyx_v_grupo_id]) = 0;
-  }
-
-  /* "scheduler.pyx":124
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 1
- * 
- *     cdef void desmarcar_ocupado(self, int maestro_id, int grupo_id, int dia, int hora_inicio, int hora_fin):             # <<<<<<<<<<<<<<
- *         """Desmarca las horas como ocupadas (para backtracking)"""
- *         cdef int hora
-*/
-
-  /* function exit code */
-}
-
-/* "scheduler.pyx":131
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0
+/* "scheduler.pyx":109
+ *             self.horas_maestro_dia[maestro_id][dia] += duracion
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):             # <<<<<<<<<<<<<<
  *         """
- *         Genera el horario completo usando backtracking
+ *         Genera el horario completo distribuyendo materias de forma inteligente:
 */
 
 static PyObject *__pyx_pw_9scheduler_15SchedulerEngine_3generar_horario(PyObject *__pyx_v_self, 
@@ -5330,15 +5877,53 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 ); /*proto*/
 static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v_self, PyObject *__pyx_v_maestros_data, PyObject *__pyx_v_materias_data, PyObject *__pyx_v_grupos_data, int __pyx_skip_dispatch) {
   PyObject *__pyx_v_asignaciones = 0;
-  PyObject *__pyx_v_materia = NULL;
-  PyObject *__pyx_v_grupo = NULL;
-  PyObject *__pyx_v_horas_restantes = NULL;
-  int __pyx_v_asignado;
+  CYTHON_UNUSED int __pyx_v_max_horas_dia;
+  int __pyx_v_max_materias;
+  PyObject *__pyx_v_materias_a_usar = NULL;
+  PyObject *__pyx_v_maestros_por_materia = NULL;
   PyObject *__pyx_v_maestro = NULL;
+  PyObject *__pyx_v_materias_maestro = NULL;
+  PyObject *__pyx_v_materia_id = NULL;
+  PyObject *__pyx_v_grupo = NULL;
+  PyObject *__pyx_v_grupo_id = NULL;
+  PyObject *__pyx_v_maestro_por_materia_grupo = NULL;
+  PyObject *__pyx_v_materias_maestro_grupo = NULL;
+  PyObject *__pyx_v_materia = NULL;
+  PyObject *__pyx_v_m = NULL;
+  PyObject *__pyx_v_materias_con_horas = NULL;
+  PyObject *__pyx_v_horas_semanales = NULL;
+  PyObject *__pyx_v_horas_disponibles_dia = NULL;
+  PyObject *__pyx_v_total_horas_materias = NULL;
+  PyObject *__pyx_v_sesiones_por_dia = NULL;
+  PyObject *__pyx_v_horas_por_dia = NULL;
+  PyObject *__pyx_v_materia_doble_dia = NULL;
+  PyObject *__pyx_v_i = NULL;
+  PyObject *__pyx_v_j = NULL;
+  PyObject *__pyx_v_materia_info = NULL;
+  PyObject *__pyx_v_horas_restantes = NULL;
+  PyObject *__pyx_v_dias_asignados = NULL;
+  long __pyx_v_mejor_dia;
+  PyObject *__pyx_v_menor_carga = NULL;
+  long __pyx_v_d;
   long __pyx_v_dia;
-  PyObject *__pyx_v_hora_inicio = NULL;
+  Py_ssize_t __pyx_v_idx;
+  PyObject *__pyx_v_mid = NULL;
+  PyObject *__pyx_v_dur = NULL;
+  int __pyx_v_agregada;
+  int __pyx_v_ya_en_dia;
+  PyObject *__pyx_v_existing_mid = NULL;
+  CYTHON_UNUSED PyObject *__pyx_v__ = NULL;
+  PyObject *__pyx_v_idx_materia = NULL;
+  PyObject *__pyx_v_bloques_por_dia = NULL;
+  PyObject *__pyx_v_hora_actual = NULL;
+  PyObject *__pyx_v_sesiones_dia = NULL;
   PyObject *__pyx_v_duracion = NULL;
+  PyObject *__pyx_v_maestro_id = NULL;
+  PyObject *__pyx_v_dias_disponibles = NULL;
+  PyObject *__pyx_v_horas_max_maestro = NULL;
+  PyObject *__pyx_v_horas_usadas = NULL;
   PyObject *__pyx_v_hora_fin = NULL;
+  CYTHON_UNUSED long __pyx_7genexpr__pyx_v__;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -5347,21 +5932,24 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
   PyObject *__pyx_t_4 = NULL;
   size_t __pyx_t_5;
   Py_ssize_t __pyx_t_6;
-  Py_ssize_t __pyx_t_7;
-  int __pyx_t_8;
-  Py_ssize_t __pyx_t_9;
-  long __pyx_t_10;
-  PyObject *__pyx_t_11 = NULL;
-  PyObject *__pyx_t_12 = NULL;
+  int __pyx_t_7;
+  Py_ssize_t __pyx_t_8;
+  PyObject *(*__pyx_t_9)(PyObject *);
+  int __pyx_t_10;
+  int __pyx_t_11;
+  int __pyx_t_12;
   PyObject *__pyx_t_13 = NULL;
-  PyObject *(*__pyx_t_14)(PyObject *);
+  Py_ssize_t __pyx_t_14;
   long __pyx_t_15;
   PyObject *__pyx_t_16 = NULL;
-  int __pyx_t_17;
+  PyObject *(*__pyx_t_17)(PyObject *);
   int __pyx_t_18;
-  int __pyx_t_19;
-  int __pyx_t_20;
-  int __pyx_t_21;
+  Py_ssize_t __pyx_t_19;
+  PyObject *(*__pyx_t_20)(PyObject *);
+  long __pyx_t_21;
+  PyObject *__pyx_t_22 = NULL;
+  int __pyx_t_23;
+  int __pyx_t_24;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -5382,7 +5970,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
     if (unlikely(!__Pyx_object_dict_version_matches(((PyObject *)__pyx_v_self), __pyx_tp_dict_version, __pyx_obj_dict_version))) {
       PY_UINT64_T __pyx_typedict_guard = __Pyx_get_tp_dict_version(((PyObject *)__pyx_v_self));
       #endif
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_mstate_global->__pyx_n_u_generar_horario); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_mstate_global->__pyx_n_u_generar_horario); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_9scheduler_15SchedulerEngine_3generar_horario)) {
         __Pyx_XDECREF(__pyx_r);
@@ -5406,10 +5994,10 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
           __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_4, __pyx_callargs+__pyx_t_5, (4-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
           __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
           __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-          if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 131, __pyx_L1_error)
+          if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 109, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_2);
         }
-        if (!(likely(PyList_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_2))) __PYX_ERR(0, 131, __pyx_L1_error)
+        if (!(likely(PyList_CheckExact(__pyx_t_2))||((__pyx_t_2) == Py_None) || __Pyx_RaiseUnexpectedTypeError("list", __pyx_t_2))) __PYX_ERR(0, 109, __pyx_L1_error)
         __pyx_r = ((PyObject*)__pyx_t_2);
         __pyx_t_2 = 0;
         __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
@@ -5428,624 +6016,2711 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
     #endif
   }
 
-  /* "scheduler.pyx":143
+  /* "scheduler.pyx":127
  *             Lista de asignaciones generadas
  *         """
  *         cdef list asignaciones = []             # <<<<<<<<<<<<<<
- * 
- *         # Para cada materia y grupo, intentar asignar un maestro
+ *         cdef int max_horas_dia = MAX_HORAS_DIA
+ *         cdef int max_materias = MAX_MATERIAS
 */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 143, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 127, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_asignaciones = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "scheduler.pyx":146
+  /* "scheduler.pyx":128
+ *         """
+ *         cdef list asignaciones = []
+ *         cdef int max_horas_dia = MAX_HORAS_DIA             # <<<<<<<<<<<<<<
+ *         cdef int max_materias = MAX_MATERIAS
  * 
- *         # Para cada materia y grupo, intentar asignar un maestro
- *         for materia in materias_data:             # <<<<<<<<<<<<<<
- *             for grupo in grupos_data:
- *                 horas_restantes = materia['horas_semanales']
+*/
+  __pyx_v_max_horas_dia = 8;
+
+  /* "scheduler.pyx":129
+ *         cdef list asignaciones = []
+ *         cdef int max_horas_dia = MAX_HORAS_DIA
+ *         cdef int max_materias = MAX_MATERIAS             # <<<<<<<<<<<<<<
+ * 
+ *         # Limitar a mximo 7 materias
+*/
+  __pyx_v_max_materias = 7;
+
+  /* "scheduler.pyx":132
+ * 
+ *         # Limitar a mximo 7 materias
+ *         materias_a_usar = materias_data[:max_materias] if len(materias_data) > max_materias else materias_data             # <<<<<<<<<<<<<<
+ * 
+ *         # Crear ndice de maestros por materia
 */
   if (unlikely(__pyx_v_materias_data == Py_None)) {
-    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-    __PYX_ERR(0, 146, __pyx_L1_error)
+    PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
+    __PYX_ERR(0, 132, __pyx_L1_error)
   }
-  __pyx_t_1 = __pyx_v_materias_data; __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_6 = __Pyx_PyList_GET_SIZE(__pyx_v_materias_data); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 132, __pyx_L1_error)
+  __pyx_t_7 = (__pyx_t_6 > __pyx_v_max_materias);
+  if (__pyx_t_7) {
+    if (unlikely(__pyx_v_materias_data == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not subscriptable");
+      __PYX_ERR(0, 132, __pyx_L1_error)
+    }
+    __pyx_t_2 = __Pyx_PyList_GetSlice(__pyx_v_materias_data, 0, __pyx_v_max_materias); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 132, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __pyx_t_1 = __pyx_t_2;
+    __pyx_t_2 = 0;
+  } else {
+    __Pyx_INCREF(__pyx_v_materias_data);
+    __pyx_t_1 = __pyx_v_materias_data;
+  }
+  __pyx_v_materias_a_usar = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "scheduler.pyx":135
+ * 
+ *         # Crear ndice de maestros por materia
+ *         maestros_por_materia = {}             # <<<<<<<<<<<<<<
+ *         for maestro in maestros_data:
+ *             materias_maestro = maestro.get('materias_ids', [])
+*/
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 135, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_maestros_por_materia = ((PyObject*)__pyx_t_1);
+  __pyx_t_1 = 0;
+
+  /* "scheduler.pyx":136
+ *         # Crear ndice de maestros por materia
+ *         maestros_por_materia = {}
+ *         for maestro in maestros_data:             # <<<<<<<<<<<<<<
+ *             materias_maestro = maestro.get('materias_ids', [])
+ *             for materia_id in materias_maestro:
+*/
+  if (unlikely(__pyx_v_maestros_data == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 136, __pyx_L1_error)
+  }
+  __pyx_t_1 = __pyx_v_maestros_data; __Pyx_INCREF(__pyx_t_1);
   __pyx_t_6 = 0;
   for (;;) {
     {
       Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_1);
       #if !CYTHON_ASSUME_SAFE_SIZE
-      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 146, __pyx_L1_error)
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 136, __pyx_L1_error)
       #endif
       if (__pyx_t_6 >= __pyx_temp) break;
     }
     __pyx_t_2 = __Pyx_PyList_GetItemRefFast(__pyx_t_1, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
     ++__pyx_t_6;
-    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 146, __pyx_L1_error)
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 136, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_2);
-    __Pyx_XDECREF_SET(__pyx_v_materia, __pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_maestro, __pyx_t_2);
     __pyx_t_2 = 0;
 
-    /* "scheduler.pyx":147
- *         # Para cada materia y grupo, intentar asignar un maestro
- *         for materia in materias_data:
- *             for grupo in grupos_data:             # <<<<<<<<<<<<<<
- *                 horas_restantes = materia['horas_semanales']
+    /* "scheduler.pyx":137
+ *         maestros_por_materia = {}
+ *         for maestro in maestros_data:
+ *             materias_maestro = maestro.get('materias_ids', [])             # <<<<<<<<<<<<<<
+ *             for materia_id in materias_maestro:
+ *                 if materia_id not in maestros_por_materia:
+*/
+    __pyx_t_4 = __pyx_v_maestro;
+    __Pyx_INCREF(__pyx_t_4);
+    __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 137, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_3);
+    __pyx_t_5 = 0;
+    {
+      PyObject *__pyx_callargs[3] = {__pyx_t_4, __pyx_mstate_global->__pyx_n_u_materias_ids, __pyx_t_3};
+      __pyx_t_2 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_get, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 137, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
+    }
+    __Pyx_XDECREF_SET(__pyx_v_materias_maestro, __pyx_t_2);
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":138
+ *         for maestro in maestros_data:
+ *             materias_maestro = maestro.get('materias_ids', [])
+ *             for materia_id in materias_maestro:             # <<<<<<<<<<<<<<
+ *                 if materia_id not in maestros_por_materia:
+ *                     maestros_por_materia[materia_id] = []
+*/
+    if (likely(PyList_CheckExact(__pyx_v_materias_maestro)) || PyTuple_CheckExact(__pyx_v_materias_maestro)) {
+      __pyx_t_2 = __pyx_v_materias_maestro; __Pyx_INCREF(__pyx_t_2);
+      __pyx_t_8 = 0;
+      __pyx_t_9 = NULL;
+    } else {
+      __pyx_t_8 = -1; __pyx_t_2 = PyObject_GetIter(__pyx_v_materias_maestro); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 138, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
+      __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_2); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 138, __pyx_L1_error)
+    }
+    for (;;) {
+      if (likely(!__pyx_t_9)) {
+        if (likely(PyList_CheckExact(__pyx_t_2))) {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_2);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 138, __pyx_L1_error)
+            #endif
+            if (__pyx_t_8 >= __pyx_temp) break;
+          }
+          __pyx_t_3 = __Pyx_PyList_GetItemRefFast(__pyx_t_2, __pyx_t_8, __Pyx_ReferenceSharing_OwnStrongReference);
+          ++__pyx_t_8;
+        } else {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_2);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 138, __pyx_L1_error)
+            #endif
+            if (__pyx_t_8 >= __pyx_temp) break;
+          }
+          #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+          __pyx_t_3 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_2, __pyx_t_8));
+          #else
+          __pyx_t_3 = __Pyx_PySequence_ITEM(__pyx_t_2, __pyx_t_8);
+          #endif
+          ++__pyx_t_8;
+        }
+        if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 138, __pyx_L1_error)
+      } else {
+        __pyx_t_3 = __pyx_t_9(__pyx_t_2);
+        if (unlikely(!__pyx_t_3)) {
+          PyObject* exc_type = PyErr_Occurred();
+          if (exc_type) {
+            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 138, __pyx_L1_error)
+            PyErr_Clear();
+          }
+          break;
+        }
+      }
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_XDECREF_SET(__pyx_v_materia_id, __pyx_t_3);
+      __pyx_t_3 = 0;
+
+      /* "scheduler.pyx":139
+ *             materias_maestro = maestro.get('materias_ids', [])
+ *             for materia_id in materias_maestro:
+ *                 if materia_id not in maestros_por_materia:             # <<<<<<<<<<<<<<
+ *                     maestros_por_materia[materia_id] = []
+ *                 maestros_por_materia[materia_id].append(maestro)
+*/
+      __pyx_t_7 = (__Pyx_PyDict_ContainsTF(__pyx_v_materia_id, __pyx_v_maestros_por_materia, Py_NE)); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 139, __pyx_L1_error)
+      if (__pyx_t_7) {
+
+        /* "scheduler.pyx":140
+ *             for materia_id in materias_maestro:
+ *                 if materia_id not in maestros_por_materia:
+ *                     maestros_por_materia[materia_id] = []             # <<<<<<<<<<<<<<
+ *                 maestros_por_materia[materia_id].append(maestro)
  * 
 */
-    if (unlikely(__pyx_v_grupos_data == Py_None)) {
-      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-      __PYX_ERR(0, 147, __pyx_L1_error)
+        __pyx_t_3 = PyList_New(0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 140, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        if (unlikely((PyDict_SetItem(__pyx_v_maestros_por_materia, __pyx_v_materia_id, __pyx_t_3) < 0))) __PYX_ERR(0, 140, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+        /* "scheduler.pyx":139
+ *             materias_maestro = maestro.get('materias_ids', [])
+ *             for materia_id in materias_maestro:
+ *                 if materia_id not in maestros_por_materia:             # <<<<<<<<<<<<<<
+ *                     maestros_por_materia[materia_id] = []
+ *                 maestros_por_materia[materia_id].append(maestro)
+*/
+      }
+
+      /* "scheduler.pyx":141
+ *                 if materia_id not in maestros_por_materia:
+ *                     maestros_por_materia[materia_id] = []
+ *                 maestros_por_materia[materia_id].append(maestro)             # <<<<<<<<<<<<<<
+ * 
+ *         # Mezclar para distribuir carga
+*/
+      __pyx_t_3 = __Pyx_PyDict_GetItem(__pyx_v_maestros_por_materia, __pyx_v_materia_id); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 141, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __pyx_t_10 = __Pyx_PyObject_Append(__pyx_t_3, __pyx_v_maestro); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 141, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+      /* "scheduler.pyx":138
+ *         for maestro in maestros_data:
+ *             materias_maestro = maestro.get('materias_ids', [])
+ *             for materia_id in materias_maestro:             # <<<<<<<<<<<<<<
+ *                 if materia_id not in maestros_por_materia:
+ *                     maestros_por_materia[materia_id] = []
+*/
     }
-    __pyx_t_2 = __pyx_v_grupos_data; __Pyx_INCREF(__pyx_t_2);
-    __pyx_t_7 = 0;
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":136
+ *         # Crear ndice de maestros por materia
+ *         maestros_por_materia = {}
+ *         for maestro in maestros_data:             # <<<<<<<<<<<<<<
+ *             materias_maestro = maestro.get('materias_ids', [])
+ *             for materia_id in materias_maestro:
+*/
+  }
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "scheduler.pyx":144
+ * 
+ *         # Mezclar para distribuir carga
+ *         for materia_id in maestros_por_materia:             # <<<<<<<<<<<<<<
+ *             random.shuffle(maestros_por_materia[materia_id])
+ * 
+*/
+  __pyx_t_6 = 0;
+  __pyx_t_2 = __Pyx_dict_iterator(__pyx_v_maestros_por_materia, 1, ((PyObject *)NULL), (&__pyx_t_8), (&__pyx_t_11)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 144, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_2);
+  __Pyx_XDECREF(__pyx_t_1);
+  __pyx_t_1 = __pyx_t_2;
+  __pyx_t_2 = 0;
+  while (1) {
+    __pyx_t_12 = __Pyx_dict_iter_next(__pyx_t_1, __pyx_t_8, &__pyx_t_6, &__pyx_t_2, NULL, NULL, __pyx_t_11);
+    if (unlikely(__pyx_t_12 == 0)) break;
+    if (unlikely(__pyx_t_12 == -1)) __PYX_ERR(0, 144, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_materia_id, __pyx_t_2);
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":145
+ *         # Mezclar para distribuir carga
+ *         for materia_id in maestros_por_materia:
+ *             random.shuffle(maestros_por_materia[materia_id])             # <<<<<<<<<<<<<<
+ * 
+ *         # Para cada grupo
+*/
+    __pyx_t_3 = NULL;
+    __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_random); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 145, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_13 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_shuffle); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 145, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_13);
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+    __pyx_t_4 = __Pyx_PyDict_GetItem(__pyx_v_maestros_por_materia, __pyx_v_materia_id); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 145, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_5 = 1;
+    #if CYTHON_UNPACK_METHODS
+    if (unlikely(PyMethod_Check(__pyx_t_13))) {
+      __pyx_t_3 = PyMethod_GET_SELF(__pyx_t_13);
+      assert(__pyx_t_3);
+      PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_13);
+      __Pyx_INCREF(__pyx_t_3);
+      __Pyx_INCREF(__pyx__function);
+      __Pyx_DECREF_SET(__pyx_t_13, __pyx__function);
+      __pyx_t_5 = 0;
+    }
+    #endif
+    {
+      PyObject *__pyx_callargs[2] = {__pyx_t_3, __pyx_t_4};
+      __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_13, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 145, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
+    }
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+  }
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "scheduler.pyx":148
+ * 
+ *         # Para cada grupo
+ *         for grupo in grupos_data:             # <<<<<<<<<<<<<<
+ *             grupo_id = grupo['id']
+ * 
+*/
+  if (unlikely(__pyx_v_grupos_data == Py_None)) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+    __PYX_ERR(0, 148, __pyx_L1_error)
+  }
+  __pyx_t_1 = __pyx_v_grupos_data; __Pyx_INCREF(__pyx_t_1);
+  __pyx_t_8 = 0;
+  for (;;) {
+    {
+      Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_1);
+      #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 148, __pyx_L1_error)
+      #endif
+      if (__pyx_t_8 >= __pyx_temp) break;
+    }
+    __pyx_t_2 = __Pyx_PyList_GetItemRefFast(__pyx_t_1, __pyx_t_8, __Pyx_ReferenceSharing_OwnStrongReference);
+    ++__pyx_t_8;
+    if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 148, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_grupo, __pyx_t_2);
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":149
+ *         # Para cada grupo
+ *         for grupo in grupos_data:
+ *             grupo_id = grupo['id']             # <<<<<<<<<<<<<<
+ * 
+ *             # Diccionario para trackear qu maestro da qu materia a este grupo
+*/
+    __pyx_t_2 = __Pyx_PyObject_Dict_GetItem(__pyx_v_grupo, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 149, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_grupo_id, __pyx_t_2);
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":152
+ * 
+ *             # Diccionario para trackear qu maestro da qu materia a este grupo
+ *             maestro_por_materia_grupo = {}  # materia_id -> maestro             # <<<<<<<<<<<<<<
+ *             materias_maestro_grupo = {}     # maestro_id -> materia_id (un maestro solo da una materia)
+ * 
+*/
+    __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 152, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_maestro_por_materia_grupo, ((PyObject*)__pyx_t_2));
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":153
+ *             # Diccionario para trackear qu maestro da qu materia a este grupo
+ *             maestro_por_materia_grupo = {}  # materia_id -> maestro
+ *             materias_maestro_grupo = {}     # maestro_id -> materia_id (un maestro solo da una materia)             # <<<<<<<<<<<<<<
+ * 
+ *             # Primero, asignar un maestro a cada materia
+*/
+    __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 153, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_materias_maestro_grupo, ((PyObject*)__pyx_t_2));
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":156
+ * 
+ *             # Primero, asignar un maestro a cada materia
+ *             for materia in materias_a_usar:             # <<<<<<<<<<<<<<
+ *                 materia_id = materia['id']
+ * 
+*/
+    if (unlikely(__pyx_v_materias_a_usar == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+      __PYX_ERR(0, 156, __pyx_L1_error)
+    }
+    __pyx_t_2 = __pyx_v_materias_a_usar; __Pyx_INCREF(__pyx_t_2);
+    __pyx_t_6 = 0;
     for (;;) {
       {
         Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_2);
         #if !CYTHON_ASSUME_SAFE_SIZE
-        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 147, __pyx_L1_error)
+        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 156, __pyx_L1_error)
         #endif
-        if (__pyx_t_7 >= __pyx_temp) break;
+        if (__pyx_t_6 >= __pyx_temp) break;
       }
-      __pyx_t_4 = __Pyx_PyList_GetItemRefFast(__pyx_t_2, __pyx_t_7, __Pyx_ReferenceSharing_OwnStrongReference);
-      ++__pyx_t_7;
-      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 147, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_4);
-      __Pyx_XDECREF_SET(__pyx_v_grupo, __pyx_t_4);
-      __pyx_t_4 = 0;
+      __pyx_t_13 = __Pyx_PyList_GetItemRefFast(__pyx_t_2, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
+      ++__pyx_t_6;
+      if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 156, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      __Pyx_XDECREF_SET(__pyx_v_materia, __pyx_t_13);
+      __pyx_t_13 = 0;
 
-      /* "scheduler.pyx":148
- *         for materia in materias_data:
- *             for grupo in grupos_data:
- *                 horas_restantes = materia['horas_semanales']             # <<<<<<<<<<<<<<
+      /* "scheduler.pyx":157
+ *             # Primero, asignar un maestro a cada materia
+ *             for materia in materias_a_usar:
+ *                 materia_id = materia['id']             # <<<<<<<<<<<<<<
  * 
- *                 # Intentar asignar las horas de la materia
+ *                 if materia_id not in maestros_por_materia:
 */
-      __pyx_t_4 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia, __pyx_mstate_global->__pyx_n_u_horas_semanales); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 148, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_4);
-      __Pyx_XDECREF_SET(__pyx_v_horas_restantes, __pyx_t_4);
-      __pyx_t_4 = 0;
+      __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 157, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      __Pyx_XDECREF_SET(__pyx_v_materia_id, __pyx_t_13);
+      __pyx_t_13 = 0;
 
-      /* "scheduler.pyx":151
+      /* "scheduler.pyx":159
+ *                 materia_id = materia['id']
  * 
- *                 # Intentar asignar las horas de la materia
- *                 while horas_restantes > 0:             # <<<<<<<<<<<<<<
- *                     asignado = False
- * 
-*/
-      while (1) {
-        __pyx_t_4 = PyObject_RichCompare(__pyx_v_horas_restantes, __pyx_mstate_global->__pyx_int_0, Py_GT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 151, __pyx_L1_error)
-        __pyx_t_8 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely((__pyx_t_8 < 0))) __PYX_ERR(0, 151, __pyx_L1_error)
-        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        if (!__pyx_t_8) break;
-
-        /* "scheduler.pyx":152
- *                 # Intentar asignar las horas de la materia
- *                 while horas_restantes > 0:
- *                     asignado = False             # <<<<<<<<<<<<<<
- * 
- *                     # Intentar con cada maestro
-*/
-        __pyx_v_asignado = 0;
-
-        /* "scheduler.pyx":155
- * 
- *                     # Intentar con cada maestro
- *                     for maestro in maestros_data:             # <<<<<<<<<<<<<<
- *                         if asignado:
- *                             break
-*/
-        if (unlikely(__pyx_v_maestros_data == Py_None)) {
-          PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
-          __PYX_ERR(0, 155, __pyx_L1_error)
-        }
-        __pyx_t_4 = __pyx_v_maestros_data; __Pyx_INCREF(__pyx_t_4);
-        __pyx_t_9 = 0;
-        for (;;) {
-          {
-            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_4);
-            #if !CYTHON_ASSUME_SAFE_SIZE
-            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 155, __pyx_L1_error)
-            #endif
-            if (__pyx_t_9 >= __pyx_temp) break;
-          }
-          __pyx_t_3 = __Pyx_PyList_GetItemRefFast(__pyx_t_4, __pyx_t_9, __Pyx_ReferenceSharing_OwnStrongReference);
-          ++__pyx_t_9;
-          if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 155, __pyx_L1_error)
-          __Pyx_GOTREF(__pyx_t_3);
-          __Pyx_XDECREF_SET(__pyx_v_maestro, __pyx_t_3);
-          __pyx_t_3 = 0;
-
-          /* "scheduler.pyx":156
- *                     # Intentar con cada maestro
- *                     for maestro in maestros_data:
- *                         if asignado:             # <<<<<<<<<<<<<<
- *                             break
+ *                 if materia_id not in maestros_por_materia:             # <<<<<<<<<<<<<<
+ *                     continue
  * 
 */
-          if (__pyx_v_asignado) {
+      __pyx_t_7 = (__Pyx_PyDict_ContainsTF(__pyx_v_materia_id, __pyx_v_maestros_por_materia, Py_NE)); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 159, __pyx_L1_error)
+      if (__pyx_t_7) {
 
-            /* "scheduler.pyx":157
- *                     for maestro in maestros_data:
- *                         if asignado:
- *                             break             # <<<<<<<<<<<<<<
+        /* "scheduler.pyx":160
  * 
- *                         # Intentar cada da de la semana
-*/
-            goto __pyx_L10_break;
-
-            /* "scheduler.pyx":156
- *                     # Intentar con cada maestro
- *                     for maestro in maestros_data:
- *                         if asignado:             # <<<<<<<<<<<<<<
- *                             break
+ *                 if materia_id not in maestros_por_materia:
+ *                     continue             # <<<<<<<<<<<<<<
  * 
+ *                 # Buscar un maestro que no est dando otra materia a este grupo
 */
-          }
+        goto __pyx_L14_continue;
 
-          /* "scheduler.pyx":160
+        /* "scheduler.pyx":159
+ *                 materia_id = materia['id']
  * 
- *                         # Intentar cada da de la semana
- *                         for dia in range(5):  # Lunes a Viernes             # <<<<<<<<<<<<<<
- *                             if asignado:
- *                                 break
-*/
-          for (__pyx_t_10 = 0; __pyx_t_10 < 5; __pyx_t_10+=1) {
-            __pyx_v_dia = __pyx_t_10;
-
-            /* "scheduler.pyx":161
- *                         # Intentar cada da de la semana
- *                         for dia in range(5):  # Lunes a Viernes
- *                             if asignado:             # <<<<<<<<<<<<<<
- *                                 break
+ *                 if materia_id not in maestros_por_materia:             # <<<<<<<<<<<<<<
+ *                     continue
  * 
 */
-            if (__pyx_v_asignado) {
+      }
 
-              /* "scheduler.pyx":162
- *                         for dia in range(5):  # Lunes a Viernes
- *                             if asignado:
- *                                 break             # <<<<<<<<<<<<<<
+      /* "scheduler.pyx":163
  * 
- *                             # Intentar diferentes horas del da
+ *                 # Buscar un maestro que no est dando otra materia a este grupo
+ *                 for m in maestros_por_materia[materia_id]:             # <<<<<<<<<<<<<<
+ *                     if m['id'] not in materias_maestro_grupo:
+ *                         maestro_por_materia_grupo[materia_id] = m
 */
-              goto __pyx_L13_break;
-
-              /* "scheduler.pyx":161
- *                         # Intentar cada da de la semana
- *                         for dia in range(5):  # Lunes a Viernes
- *                             if asignado:             # <<<<<<<<<<<<<<
- *                                 break
- * 
-*/
-            }
-
-            /* "scheduler.pyx":165
- * 
- *                             # Intentar diferentes horas del da
- *                             for hora_inicio in range(self.hora_min, self.hora_max):             # <<<<<<<<<<<<<<
- *                                 # Determinar duracin (1 o 2 horas)
- *                                 duracion = min(2, horas_restantes)
-*/
-            __pyx_t_11 = NULL;
-            __pyx_t_12 = __Pyx_PyLong_From_int(__pyx_v_self->hora_min); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 165, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_12);
-            __pyx_t_13 = __Pyx_PyLong_From_int(__pyx_v_self->hora_max); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 165, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_13);
-            __pyx_t_5 = 1;
+      __pyx_t_13 = __Pyx_PyDict_GetItem(__pyx_v_maestros_por_materia, __pyx_v_materia_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 163, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      if (likely(PyList_CheckExact(__pyx_t_13)) || PyTuple_CheckExact(__pyx_t_13)) {
+        __pyx_t_4 = __pyx_t_13; __Pyx_INCREF(__pyx_t_4);
+        __pyx_t_14 = 0;
+        __pyx_t_9 = NULL;
+      } else {
+        __pyx_t_14 = -1; __pyx_t_4 = PyObject_GetIter(__pyx_t_13); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 163, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_4);
+        __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_4); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 163, __pyx_L1_error)
+      }
+      __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+      for (;;) {
+        if (likely(!__pyx_t_9)) {
+          if (likely(PyList_CheckExact(__pyx_t_4))) {
             {
-              PyObject *__pyx_callargs[3] = {__pyx_t_11, __pyx_t_12, __pyx_t_13};
-              __pyx_t_3 = __Pyx_PyObject_FastCall((PyObject*)(&PyRange_Type), __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
-              __Pyx_XDECREF(__pyx_t_11); __pyx_t_11 = 0;
-              __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-              __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
-              if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 165, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_3);
+              Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_4);
+              #if !CYTHON_ASSUME_SAFE_SIZE
+              if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 163, __pyx_L1_error)
+              #endif
+              if (__pyx_t_14 >= __pyx_temp) break;
             }
-            __pyx_t_13 = PyObject_GetIter(__pyx_t_3); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 165, __pyx_L1_error)
-            __Pyx_GOTREF(__pyx_t_13);
-            __pyx_t_14 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_13); if (unlikely(!__pyx_t_14)) __PYX_ERR(0, 165, __pyx_L1_error)
-            __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-            for (;;) {
-              {
-                __pyx_t_3 = __pyx_t_14(__pyx_t_13);
-                if (unlikely(!__pyx_t_3)) {
-                  PyObject* exc_type = PyErr_Occurred();
-                  if (exc_type) {
-                    if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 165, __pyx_L1_error)
-                    PyErr_Clear();
-                  }
-                  break;
-                }
-              }
-              __Pyx_GOTREF(__pyx_t_3);
-              __Pyx_XDECREF_SET(__pyx_v_hora_inicio, __pyx_t_3);
-              __pyx_t_3 = 0;
-
-              /* "scheduler.pyx":167
- *                             for hora_inicio in range(self.hora_min, self.hora_max):
- *                                 # Determinar duracin (1 o 2 horas)
- *                                 duracion = min(2, horas_restantes)             # <<<<<<<<<<<<<<
- *                                 hora_fin = hora_inicio + duracion
- * 
-*/
-              __Pyx_INCREF(__pyx_v_horas_restantes);
-              __pyx_t_3 = __pyx_v_horas_restantes;
-              __pyx_t_15 = 2;
-              __pyx_t_11 = __Pyx_PyLong_From_long(__pyx_t_15); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 167, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_11);
-              __pyx_t_16 = PyObject_RichCompare(__pyx_t_3, __pyx_t_11, Py_LT); __Pyx_XGOTREF(__pyx_t_16); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 167, __pyx_L1_error)
-              __Pyx_DECREF(__pyx_t_11); __pyx_t_11 = 0;
-              __pyx_t_8 = __Pyx_PyObject_IsTrue(__pyx_t_16); if (unlikely((__pyx_t_8 < 0))) __PYX_ERR(0, 167, __pyx_L1_error)
-              __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
-              if (__pyx_t_8) {
-                __Pyx_INCREF(__pyx_t_3);
-                __pyx_t_12 = __pyx_t_3;
-              } else {
-                __pyx_t_16 = __Pyx_PyLong_From_long(__pyx_t_15); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 167, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_16);
-                __pyx_t_12 = __pyx_t_16;
-                __pyx_t_16 = 0;
-              }
-              __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-              __pyx_t_3 = __pyx_t_12;
-              __Pyx_INCREF(__pyx_t_3);
-              __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-              __Pyx_XDECREF_SET(__pyx_v_duracion, __pyx_t_3);
-              __pyx_t_3 = 0;
-
-              /* "scheduler.pyx":168
- *                                 # Determinar duracin (1 o 2 horas)
- *                                 duracion = min(2, horas_restantes)
- *                                 hora_fin = hora_inicio + duracion             # <<<<<<<<<<<<<<
- * 
- *                                 if hora_fin > self.hora_max:
-*/
-              __pyx_t_3 = PyNumber_Add(__pyx_v_hora_inicio, __pyx_v_duracion); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 168, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_3);
-              __Pyx_XDECREF_SET(__pyx_v_hora_fin, __pyx_t_3);
-              __pyx_t_3 = 0;
-
-              /* "scheduler.pyx":170
- *                                 hora_fin = hora_inicio + duracion
- * 
- *                                 if hora_fin > self.hora_max:             # <<<<<<<<<<<<<<
- *                                     continue
- * 
-*/
-              __pyx_t_3 = __Pyx_PyLong_From_int(__pyx_v_self->hora_max); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 170, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_3);
-              __pyx_t_12 = PyObject_RichCompare(__pyx_v_hora_fin, __pyx_t_3, Py_GT); __Pyx_XGOTREF(__pyx_t_12); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 170, __pyx_L1_error)
-              __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-              __pyx_t_8 = __Pyx_PyObject_IsTrue(__pyx_t_12); if (unlikely((__pyx_t_8 < 0))) __PYX_ERR(0, 170, __pyx_L1_error)
-              __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-              if (__pyx_t_8) {
-
-                /* "scheduler.pyx":171
- * 
- *                                 if hora_fin > self.hora_max:
- *                                     continue             # <<<<<<<<<<<<<<
- * 
- *                                 # Validar restricciones
-*/
-                goto __pyx_L15_continue;
-
-                /* "scheduler.pyx":170
- *                                 hora_fin = hora_inicio + duracion
- * 
- *                                 if hora_fin > self.hora_max:             # <<<<<<<<<<<<<<
- *                                     continue
- * 
-*/
-              }
-
-              /* "scheduler.pyx":175
- *                                 # Validar restricciones
- *                                 if self.validar_restricciones(
- *                                     maestro['id'],             # <<<<<<<<<<<<<<
- *                                     grupo['id'],
- *                                     dia,
-*/
-              __pyx_t_12 = __Pyx_PyObject_Dict_GetItem(__pyx_v_maestro, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 175, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_12);
-              __pyx_t_17 = __Pyx_PyLong_As_int(__pyx_t_12); if (unlikely((__pyx_t_17 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 175, __pyx_L1_error)
-              __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-
-              /* "scheduler.pyx":176
- *                                 if self.validar_restricciones(
- *                                     maestro['id'],
- *                                     grupo['id'],             # <<<<<<<<<<<<<<
- *                                     dia,
- *                                     hora_inicio,
-*/
-              __pyx_t_12 = __Pyx_PyObject_Dict_GetItem(__pyx_v_grupo, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 176, __pyx_L1_error)
-              __Pyx_GOTREF(__pyx_t_12);
-              __pyx_t_18 = __Pyx_PyLong_As_int(__pyx_t_12); if (unlikely((__pyx_t_18 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 176, __pyx_L1_error)
-              __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-
-              /* "scheduler.pyx":178
- *                                     grupo['id'],
- *                                     dia,
- *                                     hora_inicio,             # <<<<<<<<<<<<<<
- *                                     hora_fin
- *                                 ):
-*/
-              __pyx_t_19 = __Pyx_PyLong_As_int(__pyx_v_hora_inicio); if (unlikely((__pyx_t_19 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 178, __pyx_L1_error)
-
-              /* "scheduler.pyx":179
- *                                     dia,
- *                                     hora_inicio,
- *                                     hora_fin             # <<<<<<<<<<<<<<
- *                                 ):
- *                                     # Asignar
-*/
-              __pyx_t_20 = __Pyx_PyLong_As_int(__pyx_v_hora_fin); if (unlikely((__pyx_t_20 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 179, __pyx_L1_error)
-
-              /* "scheduler.pyx":174
- * 
- *                                 # Validar restricciones
- *                                 if self.validar_restricciones(             # <<<<<<<<<<<<<<
- *                                     maestro['id'],
- *                                     grupo['id'],
-*/
-              __pyx_t_8 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->validar_restricciones(__pyx_v_self, __pyx_t_17, __pyx_t_18, __pyx_v_dia, __pyx_t_19, __pyx_t_20); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 174, __pyx_L1_error)
-              if (__pyx_t_8) {
-
-                /* "scheduler.pyx":183
- *                                     # Asignar
- *                                     self.marcar_ocupado(
- *                                         maestro['id'],             # <<<<<<<<<<<<<<
- *                                         grupo['id'],
- *                                         dia,
-*/
-                __pyx_t_12 = __Pyx_PyObject_Dict_GetItem(__pyx_v_maestro, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 183, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_12);
-                __pyx_t_20 = __Pyx_PyLong_As_int(__pyx_t_12); if (unlikely((__pyx_t_20 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 183, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-
-                /* "scheduler.pyx":184
- *                                     self.marcar_ocupado(
- *                                         maestro['id'],
- *                                         grupo['id'],             # <<<<<<<<<<<<<<
- *                                         dia,
- *                                         hora_inicio,
-*/
-                __pyx_t_12 = __Pyx_PyObject_Dict_GetItem(__pyx_v_grupo, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 184, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_12);
-                __pyx_t_19 = __Pyx_PyLong_As_int(__pyx_t_12); if (unlikely((__pyx_t_19 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 184, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-
-                /* "scheduler.pyx":186
- *                                         grupo['id'],
- *                                         dia,
- *                                         hora_inicio,             # <<<<<<<<<<<<<<
- *                                         hora_fin
- *                                     )
-*/
-                __pyx_t_18 = __Pyx_PyLong_As_int(__pyx_v_hora_inicio); if (unlikely((__pyx_t_18 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 186, __pyx_L1_error)
-
-                /* "scheduler.pyx":187
- *                                         dia,
- *                                         hora_inicio,
- *                                         hora_fin             # <<<<<<<<<<<<<<
- *                                     )
- * 
-*/
-                __pyx_t_17 = __Pyx_PyLong_As_int(__pyx_v_hora_fin); if (unlikely((__pyx_t_17 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 187, __pyx_L1_error)
-
-                /* "scheduler.pyx":182
- *                                 ):
- *                                     # Asignar
- *                                     self.marcar_ocupado(             # <<<<<<<<<<<<<<
- *                                         maestro['id'],
- *                                         grupo['id'],
-*/
-                ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->marcar_ocupado(__pyx_v_self, __pyx_t_20, __pyx_t_19, __pyx_v_dia, __pyx_t_18, __pyx_t_17); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 182, __pyx_L1_error)
-
-                /* "scheduler.pyx":191
- * 
- *                                     asignaciones.append({
- *                                         'maestro_id': maestro['id'],             # <<<<<<<<<<<<<<
- *                                         'materia_id': materia['id'],
- *                                         'grupo_id': grupo['id'],
-*/
-                __pyx_t_12 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 191, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_12);
-                __pyx_t_3 = __Pyx_PyObject_Dict_GetItem(__pyx_v_maestro, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 191, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_3);
-                if (PyDict_SetItem(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_maestro_id, __pyx_t_3) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-                /* "scheduler.pyx":192
- *                                     asignaciones.append({
- *                                         'maestro_id': maestro['id'],
- *                                         'materia_id': materia['id'],             # <<<<<<<<<<<<<<
- *                                         'grupo_id': grupo['id'],
- *                                         'dia_semana': dia,
-*/
-                __pyx_t_3 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 192, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_3);
-                if (PyDict_SetItem(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_materia_id, __pyx_t_3) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-                /* "scheduler.pyx":193
- *                                         'maestro_id': maestro['id'],
- *                                         'materia_id': materia['id'],
- *                                         'grupo_id': grupo['id'],             # <<<<<<<<<<<<<<
- *                                         'dia_semana': dia,
- *                                         'hora_inicio': hora_inicio,
-*/
-                __pyx_t_3 = __Pyx_PyObject_Dict_GetItem(__pyx_v_grupo, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 193, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_3);
-                if (PyDict_SetItem(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_grupo_id, __pyx_t_3) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-                /* "scheduler.pyx":194
- *                                         'materia_id': materia['id'],
- *                                         'grupo_id': grupo['id'],
- *                                         'dia_semana': dia,             # <<<<<<<<<<<<<<
- *                                         'hora_inicio': hora_inicio,
- *                                         'hora_fin': hora_fin
-*/
-                __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_v_dia); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 194, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_3);
-                if (PyDict_SetItem(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_dia_semana, __pyx_t_3) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-
-                /* "scheduler.pyx":195
- *                                         'grupo_id': grupo['id'],
- *                                         'dia_semana': dia,
- *                                         'hora_inicio': hora_inicio,             # <<<<<<<<<<<<<<
- *                                         'hora_fin': hora_fin
- *                                     })
-*/
-                if (PyDict_SetItem(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_hora_inicio, __pyx_v_hora_inicio) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
-
-                /* "scheduler.pyx":196
- *                                         'dia_semana': dia,
- *                                         'hora_inicio': hora_inicio,
- *                                         'hora_fin': hora_fin             # <<<<<<<<<<<<<<
- *                                     })
- * 
-*/
-                if (PyDict_SetItem(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_hora_fin, __pyx_v_hora_fin) < (0)) __PYX_ERR(0, 191, __pyx_L1_error)
-
-                /* "scheduler.pyx":190
- *                                     )
- * 
- *                                     asignaciones.append({             # <<<<<<<<<<<<<<
- *                                         'maestro_id': maestro['id'],
- *                                         'materia_id': materia['id'],
-*/
-                __pyx_t_21 = __Pyx_PyList_Append(__pyx_v_asignaciones, __pyx_t_12); if (unlikely(__pyx_t_21 == ((int)-1))) __PYX_ERR(0, 190, __pyx_L1_error)
-                __Pyx_DECREF(__pyx_t_12); __pyx_t_12 = 0;
-
-                /* "scheduler.pyx":199
- *                                     })
- * 
- *                                     horas_restantes -= duracion             # <<<<<<<<<<<<<<
- *                                     asignado = True
- *                                     break
-*/
-                __pyx_t_12 = PyNumber_InPlaceSubtract(__pyx_v_horas_restantes, __pyx_v_duracion); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 199, __pyx_L1_error)
-                __Pyx_GOTREF(__pyx_t_12);
-                __Pyx_DECREF_SET(__pyx_v_horas_restantes, __pyx_t_12);
-                __pyx_t_12 = 0;
-
-                /* "scheduler.pyx":200
- * 
- *                                     horas_restantes -= duracion
- *                                     asignado = True             # <<<<<<<<<<<<<<
- *                                     break
- * 
-*/
-                __pyx_v_asignado = 1;
-
-                /* "scheduler.pyx":201
- *                                     horas_restantes -= duracion
- *                                     asignado = True
- *                                     break             # <<<<<<<<<<<<<<
- * 
- *                     # Si no se pudo asignar, salir del loop
-*/
-                goto __pyx_L16_break;
-
-                /* "scheduler.pyx":174
- * 
- *                                 # Validar restricciones
- *                                 if self.validar_restricciones(             # <<<<<<<<<<<<<<
- *                                     maestro['id'],
- *                                     grupo['id'],
-*/
-              }
-
-              /* "scheduler.pyx":165
- * 
- *                             # Intentar diferentes horas del da
- *                             for hora_inicio in range(self.hora_min, self.hora_max):             # <<<<<<<<<<<<<<
- *                                 # Determinar duracin (1 o 2 horas)
- *                                 duracion = min(2, horas_restantes)
-*/
-              __pyx_L15_continue:;
+            __pyx_t_13 = __Pyx_PyList_GetItemRefFast(__pyx_t_4, __pyx_t_14, __Pyx_ReferenceSharing_OwnStrongReference);
+            ++__pyx_t_14;
+          } else {
+            {
+              Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_4);
+              #if !CYTHON_ASSUME_SAFE_SIZE
+              if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 163, __pyx_L1_error)
+              #endif
+              if (__pyx_t_14 >= __pyx_temp) break;
             }
-            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
-            goto __pyx_L19_for_end;
-            __pyx_L16_break:;
-            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
-            goto __pyx_L19_for_end;
-            __pyx_L19_for_end:;
+            #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+            __pyx_t_13 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_4, __pyx_t_14));
+            #else
+            __pyx_t_13 = __Pyx_PySequence_ITEM(__pyx_t_4, __pyx_t_14);
+            #endif
+            ++__pyx_t_14;
           }
-          __pyx_L13_break:;
-
-          /* "scheduler.pyx":155
- * 
- *                     # Intentar con cada maestro
- *                     for maestro in maestros_data:             # <<<<<<<<<<<<<<
- *                         if asignado:
- *                             break
-*/
+          if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 163, __pyx_L1_error)
+        } else {
+          __pyx_t_13 = __pyx_t_9(__pyx_t_4);
+          if (unlikely(!__pyx_t_13)) {
+            PyObject* exc_type = PyErr_Occurred();
+            if (exc_type) {
+              if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 163, __pyx_L1_error)
+              PyErr_Clear();
+            }
+            break;
+          }
         }
-        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        goto __pyx_L20_for_end;
-        __pyx_L10_break:;
-        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-        goto __pyx_L20_for_end;
-        __pyx_L20_for_end:;
+        __Pyx_GOTREF(__pyx_t_13);
+        __Pyx_XDECREF_SET(__pyx_v_m, __pyx_t_13);
+        __pyx_t_13 = 0;
 
-        /* "scheduler.pyx":204
- * 
- *                     # Si no se pudo asignar, salir del loop
- *                     if not asignado:             # <<<<<<<<<<<<<<
+        /* "scheduler.pyx":164
+ *                 # Buscar un maestro que no est dando otra materia a este grupo
+ *                 for m in maestros_por_materia[materia_id]:
+ *                     if m['id'] not in materias_maestro_grupo:             # <<<<<<<<<<<<<<
+ *                         maestro_por_materia_grupo[materia_id] = m
+ *                         materias_maestro_grupo[m['id']] = materia_id
+*/
+        __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_v_m, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 164, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __pyx_t_7 = (__Pyx_PyDict_ContainsTF(__pyx_t_13, __pyx_v_materias_maestro_grupo, Py_NE)); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 164, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":165
+ *                 for m in maestros_por_materia[materia_id]:
+ *                     if m['id'] not in materias_maestro_grupo:
+ *                         maestro_por_materia_grupo[materia_id] = m             # <<<<<<<<<<<<<<
+ *                         materias_maestro_grupo[m['id']] = materia_id
+ *                         break
+*/
+          if (unlikely((PyDict_SetItem(__pyx_v_maestro_por_materia_grupo, __pyx_v_materia_id, __pyx_v_m) < 0))) __PYX_ERR(0, 165, __pyx_L1_error)
+
+          /* "scheduler.pyx":166
+ *                     if m['id'] not in materias_maestro_grupo:
+ *                         maestro_por_materia_grupo[materia_id] = m
+ *                         materias_maestro_grupo[m['id']] = materia_id             # <<<<<<<<<<<<<<
  *                         break
  * 
 */
-        __pyx_t_8 = (!__pyx_v_asignado);
-        if (__pyx_t_8) {
+          __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_v_m, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 166, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          if (unlikely((PyDict_SetItem(__pyx_v_materias_maestro_grupo, __pyx_t_13, __pyx_v_materia_id) < 0))) __PYX_ERR(0, 166, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
 
-          /* "scheduler.pyx":205
- *                     # Si no se pudo asignar, salir del loop
- *                     if not asignado:
+          /* "scheduler.pyx":167
+ *                         maestro_por_materia_grupo[materia_id] = m
+ *                         materias_maestro_grupo[m['id']] = materia_id
  *                         break             # <<<<<<<<<<<<<<
  * 
- *         return asignaciones
+ *             # Crear lista de materias con sus horas semanales
 */
-          goto __pyx_L8_break;
+          goto __pyx_L18_break;
 
-          /* "scheduler.pyx":204
- * 
- *                     # Si no se pudo asignar, salir del loop
- *                     if not asignado:             # <<<<<<<<<<<<<<
- *                         break
- * 
+          /* "scheduler.pyx":164
+ *                 # Buscar un maestro que no est dando otra materia a este grupo
+ *                 for m in maestros_por_materia[materia_id]:
+ *                     if m['id'] not in materias_maestro_grupo:             # <<<<<<<<<<<<<<
+ *                         maestro_por_materia_grupo[materia_id] = m
+ *                         materias_maestro_grupo[m['id']] = materia_id
 */
         }
-      }
-      __pyx_L8_break:;
 
-      /* "scheduler.pyx":147
- *         # Para cada materia y grupo, intentar asignar un maestro
- *         for materia in materias_data:
- *             for grupo in grupos_data:             # <<<<<<<<<<<<<<
- *                 horas_restantes = materia['horas_semanales']
+        /* "scheduler.pyx":163
+ * 
+ *                 # Buscar un maestro que no est dando otra materia a este grupo
+ *                 for m in maestros_por_materia[materia_id]:             # <<<<<<<<<<<<<<
+ *                     if m['id'] not in materias_maestro_grupo:
+ *                         maestro_por_materia_grupo[materia_id] = m
+*/
+      }
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      goto __pyx_L20_for_end;
+      __pyx_L18_break:;
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      goto __pyx_L20_for_end;
+      __pyx_L20_for_end:;
+
+      /* "scheduler.pyx":156
+ * 
+ *             # Primero, asignar un maestro a cada materia
+ *             for materia in materias_a_usar:             # <<<<<<<<<<<<<<
+ *                 materia_id = materia['id']
+ * 
+*/
+      __pyx_L14_continue:;
+    }
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":170
+ * 
+ *             # Crear lista de materias con sus horas semanales
+ *             materias_con_horas = []             # <<<<<<<<<<<<<<
+ *             for materia in materias_a_usar:
+ *                 materia_id = materia['id']
+*/
+    __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 170, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_materias_con_horas, ((PyObject*)__pyx_t_2));
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":171
+ *             # Crear lista de materias con sus horas semanales
+ *             materias_con_horas = []
+ *             for materia in materias_a_usar:             # <<<<<<<<<<<<<<
+ *                 materia_id = materia['id']
+ *                 if materia_id not in maestro_por_materia_grupo:
+*/
+    if (unlikely(__pyx_v_materias_a_usar == Py_None)) {
+      PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+      __PYX_ERR(0, 171, __pyx_L1_error)
+    }
+    __pyx_t_2 = __pyx_v_materias_a_usar; __Pyx_INCREF(__pyx_t_2);
+    __pyx_t_6 = 0;
+    for (;;) {
+      {
+        Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_2);
+        #if !CYTHON_ASSUME_SAFE_SIZE
+        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 171, __pyx_L1_error)
+        #endif
+        if (__pyx_t_6 >= __pyx_temp) break;
+      }
+      __pyx_t_4 = __Pyx_PyList_GetItemRefFast(__pyx_t_2, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
+      ++__pyx_t_6;
+      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 171, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_XDECREF_SET(__pyx_v_materia, __pyx_t_4);
+      __pyx_t_4 = 0;
+
+      /* "scheduler.pyx":172
+ *             materias_con_horas = []
+ *             for materia in materias_a_usar:
+ *                 materia_id = materia['id']             # <<<<<<<<<<<<<<
+ *                 if materia_id not in maestro_por_materia_grupo:
+ *                     continue
+*/
+      __pyx_t_4 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 172, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_XDECREF_SET(__pyx_v_materia_id, __pyx_t_4);
+      __pyx_t_4 = 0;
+
+      /* "scheduler.pyx":173
+ *             for materia in materias_a_usar:
+ *                 materia_id = materia['id']
+ *                 if materia_id not in maestro_por_materia_grupo:             # <<<<<<<<<<<<<<
+ *                     continue
+ *                 horas_semanales = materia['horas_semanales']
+*/
+      __pyx_t_7 = (__Pyx_PyDict_ContainsTF(__pyx_v_materia_id, __pyx_v_maestro_por_materia_grupo, Py_NE)); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 173, __pyx_L1_error)
+      if (__pyx_t_7) {
+
+        /* "scheduler.pyx":174
+ *                 materia_id = materia['id']
+ *                 if materia_id not in maestro_por_materia_grupo:
+ *                     continue             # <<<<<<<<<<<<<<
+ *                 horas_semanales = materia['horas_semanales']
+ *                 materias_con_horas.append({
+*/
+        goto __pyx_L22_continue;
+
+        /* "scheduler.pyx":173
+ *             for materia in materias_a_usar:
+ *                 materia_id = materia['id']
+ *                 if materia_id not in maestro_por_materia_grupo:             # <<<<<<<<<<<<<<
+ *                     continue
+ *                 horas_semanales = materia['horas_semanales']
+*/
+      }
+
+      /* "scheduler.pyx":175
+ *                 if materia_id not in maestro_por_materia_grupo:
+ *                     continue
+ *                 horas_semanales = materia['horas_semanales']             # <<<<<<<<<<<<<<
+ *                 materias_con_horas.append({
+ *                     'id': materia_id,
+*/
+      __pyx_t_4 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia, __pyx_mstate_global->__pyx_n_u_horas_semanales); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 175, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_XDECREF_SET(__pyx_v_horas_semanales, __pyx_t_4);
+      __pyx_t_4 = 0;
+
+      /* "scheduler.pyx":177
+ *                 horas_semanales = materia['horas_semanales']
+ *                 materias_con_horas.append({
+ *                     'id': materia_id,             # <<<<<<<<<<<<<<
+ *                     'horas': horas_semanales
+ *                 })
+*/
+      __pyx_t_4 = __Pyx_PyDict_NewPresized(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 177, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_id, __pyx_v_materia_id) < (0)) __PYX_ERR(0, 177, __pyx_L1_error)
+
+      /* "scheduler.pyx":178
+ *                 materias_con_horas.append({
+ *                     'id': materia_id,
+ *                     'horas': horas_semanales             # <<<<<<<<<<<<<<
+ *                 })
+ * 
+*/
+      if (PyDict_SetItem(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_horas, __pyx_v_horas_semanales) < (0)) __PYX_ERR(0, 177, __pyx_L1_error)
+
+      /* "scheduler.pyx":176
+ *                     continue
+ *                 horas_semanales = materia['horas_semanales']
+ *                 materias_con_horas.append({             # <<<<<<<<<<<<<<
+ *                     'id': materia_id,
+ *                     'horas': horas_semanales
+*/
+      __pyx_t_10 = __Pyx_PyList_Append(__pyx_v_materias_con_horas, __pyx_t_4); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 176, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+      /* "scheduler.pyx":171
+ *             # Crear lista de materias con sus horas semanales
+ *             materias_con_horas = []
+ *             for materia in materias_a_usar:             # <<<<<<<<<<<<<<
+ *                 materia_id = materia['id']
+ *                 if materia_id not in maestro_por_materia_grupo:
+*/
+      __pyx_L22_continue:;
+    }
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":188
+ * 
+ *             # Calcular horas totales disponibles por semana (7 horas x 5 das = 35)
+ *             horas_disponibles_dia = self.hora_max - self.hora_min  # 14 - 7 = 7 horas             # <<<<<<<<<<<<<<
+ * 
+ *             # Calcular total de horas de todas las materias
+*/
+    __pyx_t_2 = __Pyx_PyLong_From_int((__pyx_v_self->hora_max - __pyx_v_self->hora_min)); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 188, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    __Pyx_XDECREF_SET(__pyx_v_horas_disponibles_dia, __pyx_t_2);
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":191
+ * 
+ *             # Calcular total de horas de todas las materias
+ *             total_horas_materias = 0             # <<<<<<<<<<<<<<
+ *             for m in materias_con_horas:
+ *                 total_horas_materias += m['horas']
+*/
+    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_0);
+    __Pyx_XDECREF_SET(__pyx_v_total_horas_materias, __pyx_mstate_global->__pyx_int_0);
+
+    /* "scheduler.pyx":192
+ *             # Calcular total de horas de todas las materias
+ *             total_horas_materias = 0
+ *             for m in materias_con_horas:             # <<<<<<<<<<<<<<
+ *                 total_horas_materias += m['horas']
+ * 
+*/
+    __pyx_t_2 = __pyx_v_materias_con_horas; __Pyx_INCREF(__pyx_t_2);
+    __pyx_t_6 = 0;
+    for (;;) {
+      {
+        Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_2);
+        #if !CYTHON_ASSUME_SAFE_SIZE
+        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 192, __pyx_L1_error)
+        #endif
+        if (__pyx_t_6 >= __pyx_temp) break;
+      }
+      __pyx_t_4 = __Pyx_PyList_GetItemRefFast(__pyx_t_2, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
+      ++__pyx_t_6;
+      if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 192, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __Pyx_XDECREF_SET(__pyx_v_m, __pyx_t_4);
+      __pyx_t_4 = 0;
+
+      /* "scheduler.pyx":193
+ *             total_horas_materias = 0
+ *             for m in materias_con_horas:
+ *                 total_horas_materias += m['horas']             # <<<<<<<<<<<<<<
+ * 
+ *             # Crear sesiones: distribuir materias en los das
+*/
+      __pyx_t_4 = __Pyx_PyObject_Dict_GetItem(__pyx_v_m, __pyx_mstate_global->__pyx_n_u_horas); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 193, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __pyx_t_13 = PyNumber_InPlaceAdd(__pyx_v_total_horas_materias, __pyx_t_4); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 193, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __Pyx_DECREF_SET(__pyx_v_total_horas_materias, __pyx_t_13);
+      __pyx_t_13 = 0;
+
+      /* "scheduler.pyx":192
+ *             # Calcular total de horas de todas las materias
+ *             total_horas_materias = 0
+ *             for m in materias_con_horas:             # <<<<<<<<<<<<<<
+ *                 total_horas_materias += m['horas']
  * 
 */
     }
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-    /* "scheduler.pyx":146
+    /* "scheduler.pyx":197
+ *             # Crear sesiones: distribuir materias en los das
+ *             # Primero asignar 1 hora por da a cada materia (hasta completar sus horas)
+ *             sesiones_por_dia = [[] for _ in range(DIAS_SEMANA)]  # Lista de (materia_id, duracion)             # <<<<<<<<<<<<<<
+ *             horas_por_dia = [0] * DIAS_SEMANA
+ *             materia_doble_dia = [-1] * DIAS_SEMANA  # Qu materia tiene 2 horas ese da (-1 = ninguna)
+*/
+    { /* enter inner scope */
+      __pyx_t_2 = PyList_New(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 197, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
+      for (__pyx_t_15 = 0; __pyx_t_15 < 5; __pyx_t_15+=1) {
+        __pyx_7genexpr__pyx_v__ = __pyx_t_15;
+        __pyx_t_13 = PyList_New(0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 197, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        if (unlikely(__Pyx_ListComp_Append(__pyx_t_2, (PyObject*)__pyx_t_13))) __PYX_ERR(0, 197, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+      }
+    } /* exit inner scope */
+    __Pyx_XDECREF_SET(__pyx_v_sesiones_por_dia, ((PyObject*)__pyx_t_2));
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":198
+ *             # Primero asignar 1 hora por da a cada materia (hasta completar sus horas)
+ *             sesiones_por_dia = [[] for _ in range(DIAS_SEMANA)]  # Lista de (materia_id, duracion)
+ *             horas_por_dia = [0] * DIAS_SEMANA             # <<<<<<<<<<<<<<
+ *             materia_doble_dia = [-1] * DIAS_SEMANA  # Qu materia tiene 2 horas ese da (-1 = ninguna)
  * 
- *         # Para cada materia y grupo, intentar asignar un maestro
- *         for materia in materias_data:             # <<<<<<<<<<<<<<
- *             for grupo in grupos_data:
- *                 horas_restantes = materia['horas_semanales']
+*/
+    __pyx_t_2 = PyList_New(1 * 5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 198, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    { Py_ssize_t __pyx_temp;
+      for (__pyx_temp=0; __pyx_temp < 5; __pyx_temp++) {
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_0);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_0);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_2, __pyx_temp, __pyx_mstate_global->__pyx_int_0) != (0)) __PYX_ERR(0, 198, __pyx_L1_error);
+      }
+    }
+    __Pyx_XDECREF_SET(__pyx_v_horas_por_dia, ((PyObject*)__pyx_t_2));
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":199
+ *             sesiones_por_dia = [[] for _ in range(DIAS_SEMANA)]  # Lista de (materia_id, duracion)
+ *             horas_por_dia = [0] * DIAS_SEMANA
+ *             materia_doble_dia = [-1] * DIAS_SEMANA  # Qu materia tiene 2 horas ese da (-1 = ninguna)             # <<<<<<<<<<<<<<
+ * 
+ *             # Ordenar materias por horas (ms horas primero)
+*/
+    __pyx_t_2 = PyList_New(1 * 5); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 199, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_2);
+    { Py_ssize_t __pyx_temp;
+      for (__pyx_temp=0; __pyx_temp < 5; __pyx_temp++) {
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_neg_1);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_neg_1);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_2, __pyx_temp, __pyx_mstate_global->__pyx_int_neg_1) != (0)) __PYX_ERR(0, 199, __pyx_L1_error);
+      }
+    }
+    __Pyx_XDECREF_SET(__pyx_v_materia_doble_dia, ((PyObject*)__pyx_t_2));
+    __pyx_t_2 = 0;
+
+    /* "scheduler.pyx":202
+ * 
+ *             # Ordenar materias por horas (ms horas primero)
+ *             for i in range(len(materias_con_horas)):             # <<<<<<<<<<<<<<
+ *                 for j in range(i + 1, len(materias_con_horas)):
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:
+*/
+    __pyx_t_13 = NULL;
+    __pyx_t_6 = __Pyx_PyList_GET_SIZE(__pyx_v_materias_con_horas); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 202, __pyx_L1_error)
+    __pyx_t_4 = PyLong_FromSsize_t(__pyx_t_6); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 202, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_5 = 1;
+    {
+      PyObject *__pyx_callargs[2] = {__pyx_t_13, __pyx_t_4};
+      __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)(&PyRange_Type), __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+      __Pyx_XDECREF(__pyx_t_13); __pyx_t_13 = 0;
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 202, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_2);
+    }
+    __pyx_t_4 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 202, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_4);
+    __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_4); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 202, __pyx_L1_error)
+    __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+    for (;;) {
+      {
+        __pyx_t_2 = __pyx_t_9(__pyx_t_4);
+        if (unlikely(!__pyx_t_2)) {
+          PyObject* exc_type = PyErr_Occurred();
+          if (exc_type) {
+            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 202, __pyx_L1_error)
+            PyErr_Clear();
+          }
+          break;
+        }
+      }
+      __Pyx_GOTREF(__pyx_t_2);
+      __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_2);
+      __pyx_t_2 = 0;
+
+      /* "scheduler.pyx":203
+ *             # Ordenar materias por horas (ms horas primero)
+ *             for i in range(len(materias_con_horas)):
+ *                 for j in range(i + 1, len(materias_con_horas)):             # <<<<<<<<<<<<<<
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:
+ *                         materias_con_horas[i], materias_con_horas[j] = materias_con_horas[j], materias_con_horas[i]
+*/
+      __pyx_t_13 = NULL;
+      __pyx_t_3 = __Pyx_PyLong_AddObjC(__pyx_v_i, __pyx_mstate_global->__pyx_int_1, 1, 0, 0); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 203, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __pyx_t_6 = __Pyx_PyList_GET_SIZE(__pyx_v_materias_con_horas); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 203, __pyx_L1_error)
+      __pyx_t_16 = PyLong_FromSsize_t(__pyx_t_6); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 203, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __pyx_t_5 = 1;
+      {
+        PyObject *__pyx_callargs[3] = {__pyx_t_13, __pyx_t_3, __pyx_t_16};
+        __pyx_t_2 = __Pyx_PyObject_FastCall((PyObject*)(&PyRange_Type), __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+        __Pyx_XDECREF(__pyx_t_13); __pyx_t_13 = 0;
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 203, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_2);
+      }
+      __pyx_t_16 = PyObject_GetIter(__pyx_t_2); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 203, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __pyx_t_17 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_16); if (unlikely(!__pyx_t_17)) __PYX_ERR(0, 203, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+      for (;;) {
+        {
+          __pyx_t_2 = __pyx_t_17(__pyx_t_16);
+          if (unlikely(!__pyx_t_2)) {
+            PyObject* exc_type = PyErr_Occurred();
+            if (exc_type) {
+              if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 203, __pyx_L1_error)
+              PyErr_Clear();
+            }
+            break;
+          }
+        }
+        __Pyx_GOTREF(__pyx_t_2);
+        __Pyx_XDECREF_SET(__pyx_v_j, __pyx_t_2);
+        __pyx_t_2 = 0;
+
+        /* "scheduler.pyx":204
+ *             for i in range(len(materias_con_horas)):
+ *                 for j in range(i + 1, len(materias_con_horas)):
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:             # <<<<<<<<<<<<<<
+ *                         materias_con_horas[i], materias_con_horas[j] = materias_con_horas[j], materias_con_horas[i]
+ * 
+*/
+        __pyx_t_2 = __Pyx_PyObject_GetItem(__pyx_v_materias_con_horas, __pyx_v_j); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 204, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_2);
+        __pyx_t_3 = __Pyx_PyObject_Dict_GetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_horas); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 204, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+        __pyx_t_2 = __Pyx_PyObject_GetItem(__pyx_v_materias_con_horas, __pyx_v_i); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 204, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_2);
+        __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_horas); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 204, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+        __pyx_t_2 = PyObject_RichCompare(__pyx_t_3, __pyx_t_13, Py_GT); __Pyx_XGOTREF(__pyx_t_2); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 204, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+        __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_2); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 204, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":205
+ *                 for j in range(i + 1, len(materias_con_horas)):
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:
+ *                         materias_con_horas[i], materias_con_horas[j] = materias_con_horas[j], materias_con_horas[i]             # <<<<<<<<<<<<<<
+ * 
+ *             # Primera pasada: asignar 1 hora por da a cada materia
+*/
+          __pyx_t_2 = __Pyx_PyObject_GetItem(__pyx_v_materias_con_horas, __pyx_v_j); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 205, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_2);
+          __pyx_t_13 = __Pyx_PyObject_GetItem(__pyx_v_materias_con_horas, __pyx_v_i); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 205, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          if (unlikely((PyObject_SetItem(__pyx_v_materias_con_horas, __pyx_v_i, __pyx_t_2) < 0))) __PYX_ERR(0, 205, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+          if (unlikely((PyObject_SetItem(__pyx_v_materias_con_horas, __pyx_v_j, __pyx_t_13) < 0))) __PYX_ERR(0, 205, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+          /* "scheduler.pyx":204
+ *             for i in range(len(materias_con_horas)):
+ *                 for j in range(i + 1, len(materias_con_horas)):
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:             # <<<<<<<<<<<<<<
+ *                         materias_con_horas[i], materias_con_horas[j] = materias_con_horas[j], materias_con_horas[i]
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":203
+ *             # Ordenar materias por horas (ms horas primero)
+ *             for i in range(len(materias_con_horas)):
+ *                 for j in range(i + 1, len(materias_con_horas)):             # <<<<<<<<<<<<<<
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:
+ *                         materias_con_horas[i], materias_con_horas[j] = materias_con_horas[j], materias_con_horas[i]
+*/
+      }
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":202
+ * 
+ *             # Ordenar materias por horas (ms horas primero)
+ *             for i in range(len(materias_con_horas)):             # <<<<<<<<<<<<<<
+ *                 for j in range(i + 1, len(materias_con_horas)):
+ *                     if materias_con_horas[j]['horas'] > materias_con_horas[i]['horas']:
+*/
+    }
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "scheduler.pyx":208
+ * 
+ *             # Primera pasada: asignar 1 hora por da a cada materia
+ *             for materia_info in materias_con_horas:             # <<<<<<<<<<<<<<
+ *                 materia_id = materia_info['id']
+ *                 horas_restantes = materia_info['horas']
+*/
+    __pyx_t_4 = __pyx_v_materias_con_horas; __Pyx_INCREF(__pyx_t_4);
+    __pyx_t_6 = 0;
+    for (;;) {
+      {
+        Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_4);
+        #if !CYTHON_ASSUME_SAFE_SIZE
+        if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 208, __pyx_L1_error)
+        #endif
+        if (__pyx_t_6 >= __pyx_temp) break;
+      }
+      __pyx_t_16 = __Pyx_PyList_GetItemRefFast(__pyx_t_4, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
+      ++__pyx_t_6;
+      if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 208, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __Pyx_XDECREF_SET(__pyx_v_materia_info, __pyx_t_16);
+      __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":209
+ *             # Primera pasada: asignar 1 hora por da a cada materia
+ *             for materia_info in materias_con_horas:
+ *                 materia_id = materia_info['id']             # <<<<<<<<<<<<<<
+ *                 horas_restantes = materia_info['horas']
+ *                 dias_asignados = set()
+*/
+      __pyx_t_16 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia_info, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 209, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __Pyx_XDECREF_SET(__pyx_v_materia_id, __pyx_t_16);
+      __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":210
+ *             for materia_info in materias_con_horas:
+ *                 materia_id = materia_info['id']
+ *                 horas_restantes = materia_info['horas']             # <<<<<<<<<<<<<<
+ *                 dias_asignados = set()
+ * 
+*/
+      __pyx_t_16 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia_info, __pyx_mstate_global->__pyx_n_u_horas); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 210, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __Pyx_XDECREF_SET(__pyx_v_horas_restantes, __pyx_t_16);
+      __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":211
+ *                 materia_id = materia_info['id']
+ *                 horas_restantes = materia_info['horas']
+ *                 dias_asignados = set()             # <<<<<<<<<<<<<<
+ * 
+ *                 while horas_restantes > 0:
+*/
+      __pyx_t_16 = PySet_New(0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 211, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __Pyx_XDECREF_SET(__pyx_v_dias_asignados, ((PyObject*)__pyx_t_16));
+      __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":213
+ *                 dias_asignados = set()
+ * 
+ *                 while horas_restantes > 0:             # <<<<<<<<<<<<<<
+ *                     mejor_dia = -1
+ *                     menor_carga = horas_disponibles_dia + 1
+*/
+      while (1) {
+        __pyx_t_16 = PyObject_RichCompare(__pyx_v_horas_restantes, __pyx_mstate_global->__pyx_int_0, Py_GT); __Pyx_XGOTREF(__pyx_t_16); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 213, __pyx_L1_error)
+        __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_16); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 213, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        if (!__pyx_t_7) break;
+
+        /* "scheduler.pyx":214
+ * 
+ *                 while horas_restantes > 0:
+ *                     mejor_dia = -1             # <<<<<<<<<<<<<<
+ *                     menor_carga = horas_disponibles_dia + 1
+ * 
+*/
+        __pyx_v_mejor_dia = -1L;
+
+        /* "scheduler.pyx":215
+ *                 while horas_restantes > 0:
+ *                     mejor_dia = -1
+ *                     menor_carga = horas_disponibles_dia + 1             # <<<<<<<<<<<<<<
+ * 
+ *                     # Buscar da sin esta materia y con menos carga
+*/
+        __pyx_t_16 = __Pyx_PyLong_AddObjC(__pyx_v_horas_disponibles_dia, __pyx_mstate_global->__pyx_int_1, 1, 0, 0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 215, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_16);
+        __Pyx_XDECREF_SET(__pyx_v_menor_carga, __pyx_t_16);
+        __pyx_t_16 = 0;
+
+        /* "scheduler.pyx":218
+ * 
+ *                     # Buscar da sin esta materia y con menos carga
+ *                     for d in range(DIAS_SEMANA):             # <<<<<<<<<<<<<<
+ *                         if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:
+ *                             if horas_por_dia[d] < menor_carga:
+*/
+        for (__pyx_t_15 = 0; __pyx_t_15 < 5; __pyx_t_15+=1) {
+          __pyx_v_d = __pyx_t_15;
+
+          /* "scheduler.pyx":219
+ *                     # Buscar da sin esta materia y con menos carga
+ *                     for d in range(DIAS_SEMANA):
+ *                         if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:             # <<<<<<<<<<<<<<
+ *                             if horas_por_dia[d] < menor_carga:
+ *                                 menor_carga = horas_por_dia[d]
+*/
+          __pyx_t_16 = __Pyx_PyLong_From_long(__pyx_v_d); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 219, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __pyx_t_18 = (__Pyx_PySet_ContainsTF(__pyx_t_16, __pyx_v_dias_asignados, Py_NE)); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 219, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+          if (__pyx_t_18) {
+          } else {
+            __pyx_t_7 = __pyx_t_18;
+            goto __pyx_L45_bool_binop_done;
+          }
+          __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_d, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 219, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __pyx_t_13 = PyObject_RichCompare(__pyx_t_16, __pyx_v_horas_disponibles_dia, Py_LT); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 219, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+          __pyx_t_18 = __Pyx_PyObject_IsTrue(__pyx_t_13); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 219, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+          __pyx_t_7 = __pyx_t_18;
+          __pyx_L45_bool_binop_done:;
+          if (__pyx_t_7) {
+
+            /* "scheduler.pyx":220
+ *                     for d in range(DIAS_SEMANA):
+ *                         if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:
+ *                             if horas_por_dia[d] < menor_carga:             # <<<<<<<<<<<<<<
+ *                                 menor_carga = horas_por_dia[d]
+ *                                 mejor_dia = d
+*/
+            __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_d, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 220, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __pyx_t_16 = PyObject_RichCompare(__pyx_t_13, __pyx_v_menor_carga, Py_LT); __Pyx_XGOTREF(__pyx_t_16); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 220, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_16); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 220, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            if (__pyx_t_7) {
+
+              /* "scheduler.pyx":221
+ *                         if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:
+ *                             if horas_por_dia[d] < menor_carga:
+ *                                 menor_carga = horas_por_dia[d]             # <<<<<<<<<<<<<<
+ *                                 mejor_dia = d
+ * 
+*/
+              __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_d, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 221, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_16);
+              __Pyx_DECREF_SET(__pyx_v_menor_carga, __pyx_t_16);
+              __pyx_t_16 = 0;
+
+              /* "scheduler.pyx":222
+ *                             if horas_por_dia[d] < menor_carga:
+ *                                 menor_carga = horas_por_dia[d]
+ *                                 mejor_dia = d             # <<<<<<<<<<<<<<
+ * 
+ *                     # Si todos los das tienen esta materia, permitir repetir
+*/
+              __pyx_v_mejor_dia = __pyx_v_d;
+
+              /* "scheduler.pyx":220
+ *                     for d in range(DIAS_SEMANA):
+ *                         if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:
+ *                             if horas_por_dia[d] < menor_carga:             # <<<<<<<<<<<<<<
+ *                                 menor_carga = horas_por_dia[d]
+ *                                 mejor_dia = d
+*/
+            }
+
+            /* "scheduler.pyx":219
+ *                     # Buscar da sin esta materia y con menos carga
+ *                     for d in range(DIAS_SEMANA):
+ *                         if d not in dias_asignados and horas_por_dia[d] < horas_disponibles_dia:             # <<<<<<<<<<<<<<
+ *                             if horas_por_dia[d] < menor_carga:
+ *                                 menor_carga = horas_por_dia[d]
+*/
+          }
+        }
+
+        /* "scheduler.pyx":225
+ * 
+ *                     # Si todos los das tienen esta materia, permitir repetir
+ *                     if mejor_dia == -1:             # <<<<<<<<<<<<<<
+ *                         for d in range(DIAS_SEMANA):
+ *                             if horas_por_dia[d] < horas_disponibles_dia:
+*/
+        __pyx_t_7 = (__pyx_v_mejor_dia == -1L);
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":226
+ *                     # Si todos los das tienen esta materia, permitir repetir
+ *                     if mejor_dia == -1:
+ *                         for d in range(DIAS_SEMANA):             # <<<<<<<<<<<<<<
+ *                             if horas_por_dia[d] < horas_disponibles_dia:
+ *                                 if horas_por_dia[d] < menor_carga:
+*/
+          for (__pyx_t_15 = 0; __pyx_t_15 < 5; __pyx_t_15+=1) {
+            __pyx_v_d = __pyx_t_15;
+
+            /* "scheduler.pyx":227
+ *                     if mejor_dia == -1:
+ *                         for d in range(DIAS_SEMANA):
+ *                             if horas_por_dia[d] < horas_disponibles_dia:             # <<<<<<<<<<<<<<
+ *                                 if horas_por_dia[d] < menor_carga:
+ *                                     menor_carga = horas_por_dia[d]
+*/
+            __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_d, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 227, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __pyx_t_13 = PyObject_RichCompare(__pyx_t_16, __pyx_v_horas_disponibles_dia, Py_LT); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 227, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_13); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 227, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            if (__pyx_t_7) {
+
+              /* "scheduler.pyx":228
+ *                         for d in range(DIAS_SEMANA):
+ *                             if horas_por_dia[d] < horas_disponibles_dia:
+ *                                 if horas_por_dia[d] < menor_carga:             # <<<<<<<<<<<<<<
+ *                                     menor_carga = horas_por_dia[d]
+ *                                     mejor_dia = d
+*/
+              __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_d, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 228, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_13);
+              __pyx_t_16 = PyObject_RichCompare(__pyx_t_13, __pyx_v_menor_carga, Py_LT); __Pyx_XGOTREF(__pyx_t_16); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 228, __pyx_L1_error)
+              __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+              __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_16); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 228, __pyx_L1_error)
+              __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+              if (__pyx_t_7) {
+
+                /* "scheduler.pyx":229
+ *                             if horas_por_dia[d] < horas_disponibles_dia:
+ *                                 if horas_por_dia[d] < menor_carga:
+ *                                     menor_carga = horas_por_dia[d]             # <<<<<<<<<<<<<<
+ *                                     mejor_dia = d
+ * 
+*/
+                __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_d, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 229, __pyx_L1_error)
+                __Pyx_GOTREF(__pyx_t_16);
+                __Pyx_DECREF_SET(__pyx_v_menor_carga, __pyx_t_16);
+                __pyx_t_16 = 0;
+
+                /* "scheduler.pyx":230
+ *                                 if horas_por_dia[d] < menor_carga:
+ *                                     menor_carga = horas_por_dia[d]
+ *                                     mejor_dia = d             # <<<<<<<<<<<<<<
+ * 
+ *                     if mejor_dia != -1:
+*/
+                __pyx_v_mejor_dia = __pyx_v_d;
+
+                /* "scheduler.pyx":228
+ *                         for d in range(DIAS_SEMANA):
+ *                             if horas_por_dia[d] < horas_disponibles_dia:
+ *                                 if horas_por_dia[d] < menor_carga:             # <<<<<<<<<<<<<<
+ *                                     menor_carga = horas_por_dia[d]
+ *                                     mejor_dia = d
+*/
+              }
+
+              /* "scheduler.pyx":227
+ *                     if mejor_dia == -1:
+ *                         for d in range(DIAS_SEMANA):
+ *                             if horas_por_dia[d] < horas_disponibles_dia:             # <<<<<<<<<<<<<<
+ *                                 if horas_por_dia[d] < menor_carga:
+ *                                     menor_carga = horas_por_dia[d]
+*/
+            }
+          }
+
+          /* "scheduler.pyx":225
+ * 
+ *                     # Si todos los das tienen esta materia, permitir repetir
+ *                     if mejor_dia == -1:             # <<<<<<<<<<<<<<
+ *                         for d in range(DIAS_SEMANA):
+ *                             if horas_por_dia[d] < horas_disponibles_dia:
+*/
+        }
+
+        /* "scheduler.pyx":232
+ *                                     mejor_dia = d
+ * 
+ *                     if mejor_dia != -1:             # <<<<<<<<<<<<<<
+ *                         sesiones_por_dia[mejor_dia].append((materia_id, 1))
+ *                         horas_por_dia[mejor_dia] += 1
+*/
+        __pyx_t_7 = (__pyx_v_mejor_dia != -1L);
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":233
+ * 
+ *                     if mejor_dia != -1:
+ *                         sesiones_por_dia[mejor_dia].append((materia_id, 1))             # <<<<<<<<<<<<<<
+ *                         horas_por_dia[mejor_dia] += 1
+ *                         dias_asignados.add(mejor_dia)
+*/
+          __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_mejor_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 233, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __pyx_t_13 = PyTuple_New(2); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 233, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __Pyx_INCREF(__pyx_v_materia_id);
+          __Pyx_GIVEREF(__pyx_v_materia_id);
+          if (__Pyx_PyTuple_SET_ITEM(__pyx_t_13, 0, __pyx_v_materia_id) != (0)) __PYX_ERR(0, 233, __pyx_L1_error);
+          __Pyx_INCREF(__pyx_mstate_global->__pyx_int_1);
+          __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_1);
+          if (__Pyx_PyTuple_SET_ITEM(__pyx_t_13, 1, __pyx_mstate_global->__pyx_int_1) != (0)) __PYX_ERR(0, 233, __pyx_L1_error);
+          __pyx_t_10 = __Pyx_PyObject_Append(__pyx_t_16, __pyx_t_13); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 233, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+          __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+          /* "scheduler.pyx":234
+ *                     if mejor_dia != -1:
+ *                         sesiones_por_dia[mejor_dia].append((materia_id, 1))
+ *                         horas_por_dia[mejor_dia] += 1             # <<<<<<<<<<<<<<
+ *                         dias_asignados.add(mejor_dia)
+ *                         horas_restantes -= 1
+*/
+          __pyx_t_15 = __pyx_v_mejor_dia;
+          __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_t_15, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 234, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __pyx_t_16 = __Pyx_PyLong_AddObjC(__pyx_t_13, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 234, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+          if (unlikely((__Pyx_SetItemInt(__pyx_v_horas_por_dia, __pyx_t_15, __pyx_t_16, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference) < 0))) __PYX_ERR(0, 234, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+
+          /* "scheduler.pyx":235
+ *                         sesiones_por_dia[mejor_dia].append((materia_id, 1))
+ *                         horas_por_dia[mejor_dia] += 1
+ *                         dias_asignados.add(mejor_dia)             # <<<<<<<<<<<<<<
+ *                         horas_restantes -= 1
+ *                     else:
+*/
+          __pyx_t_16 = __Pyx_PyLong_From_long(__pyx_v_mejor_dia); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 235, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __pyx_t_10 = PySet_Add(__pyx_v_dias_asignados, __pyx_t_16); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 235, __pyx_L1_error)
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+
+          /* "scheduler.pyx":236
+ *                         horas_por_dia[mejor_dia] += 1
+ *                         dias_asignados.add(mejor_dia)
+ *                         horas_restantes -= 1             # <<<<<<<<<<<<<<
+ *                     else:
+ *                         break
+*/
+          __pyx_t_16 = __Pyx_PyLong_SubtractObjC(__pyx_v_horas_restantes, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 236, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __Pyx_DECREF_SET(__pyx_v_horas_restantes, __pyx_t_16);
+          __pyx_t_16 = 0;
+
+          /* "scheduler.pyx":232
+ *                                     mejor_dia = d
+ * 
+ *                     if mejor_dia != -1:             # <<<<<<<<<<<<<<
+ *                         sesiones_por_dia[mejor_dia].append((materia_id, 1))
+ *                         horas_por_dia[mejor_dia] += 1
+*/
+          goto __pyx_L53;
+        }
+
+        /* "scheduler.pyx":238
+ *                         horas_restantes -= 1
+ *                     else:
+ *                         break             # <<<<<<<<<<<<<<
+ * 
+ *             # Segunda pasada: si algn da no llega a 7 horas, agregar ms sesiones
+*/
+        /*else*/ {
+          goto __pyx_L41_break;
+        }
+        __pyx_L53:;
+      }
+      __pyx_L41_break:;
+
+      /* "scheduler.pyx":208
+ * 
+ *             # Primera pasada: asignar 1 hora por da a cada materia
+ *             for materia_info in materias_con_horas:             # <<<<<<<<<<<<<<
+ *                 materia_id = materia_info['id']
+ *                 horas_restantes = materia_info['horas']
+*/
+    }
+    __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+    /* "scheduler.pyx":242
+ *             # Segunda pasada: si algn da no llega a 7 horas, agregar ms sesiones
+ *             # Primero convertir UNA materia a 2 horas, luego agregar materias extra
+ *             for dia in range(DIAS_SEMANA):             # <<<<<<<<<<<<<<
+ *                 # Paso 1: Convertir una materia a 2 horas si es necesario
+ *                 if horas_por_dia[dia] < horas_disponibles_dia and materia_doble_dia[dia] == -1:
+*/
+    for (__pyx_t_15 = 0; __pyx_t_15 < 5; __pyx_t_15+=1) {
+      __pyx_v_dia = __pyx_t_15;
+
+      /* "scheduler.pyx":244
+ *             for dia in range(DIAS_SEMANA):
+ *                 # Paso 1: Convertir una materia a 2 horas si es necesario
+ *                 if horas_por_dia[dia] < horas_disponibles_dia and materia_doble_dia[dia] == -1:             # <<<<<<<<<<<<<<
+ *                     for idx in range(len(sesiones_por_dia[dia])):
+ *                         mid, dur = sesiones_por_dia[dia][idx]
+*/
+      __pyx_t_4 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 244, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __pyx_t_16 = PyObject_RichCompare(__pyx_t_4, __pyx_v_horas_disponibles_dia, Py_LT); __Pyx_XGOTREF(__pyx_t_16); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 244, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __pyx_t_18 = __Pyx_PyObject_IsTrue(__pyx_t_16); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 244, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+      if (__pyx_t_18) {
+      } else {
+        __pyx_t_7 = __pyx_t_18;
+        goto __pyx_L58_bool_binop_done;
+      }
+      __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_materia_doble_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 244, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __pyx_t_18 = (__Pyx_PyLong_BoolEqObjC(__pyx_t_16, __pyx_mstate_global->__pyx_int_neg_1, -1L, 0)); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 244, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+      __pyx_t_7 = __pyx_t_18;
+      __pyx_L58_bool_binop_done:;
+      if (__pyx_t_7) {
+
+        /* "scheduler.pyx":245
+ *                 # Paso 1: Convertir una materia a 2 horas si es necesario
+ *                 if horas_por_dia[dia] < horas_disponibles_dia and materia_doble_dia[dia] == -1:
+ *                     for idx in range(len(sesiones_por_dia[dia])):             # <<<<<<<<<<<<<<
+ *                         mid, dur = sesiones_por_dia[dia][idx]
+ *                         if dur == 1:
+*/
+        __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 245, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_6 = PyObject_Length(__pyx_t_16); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 245, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+        __pyx_t_14 = __pyx_t_6;
+        for (__pyx_t_19 = 0; __pyx_t_19 < __pyx_t_14; __pyx_t_19+=1) {
+          __pyx_v_idx = __pyx_t_19;
+
+          /* "scheduler.pyx":246
+ *                 if horas_por_dia[dia] < horas_disponibles_dia and materia_doble_dia[dia] == -1:
+ *                     for idx in range(len(sesiones_por_dia[dia])):
+ *                         mid, dur = sesiones_por_dia[dia][idx]             # <<<<<<<<<<<<<<
+ *                         if dur == 1:
+ *                             sesiones_por_dia[dia][idx] = (mid, 2)
+*/
+          __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 246, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_16);
+          __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_16, __pyx_v_idx, Py_ssize_t, 1, PyLong_FromSsize_t, 0, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 246, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_4);
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+          if ((likely(PyTuple_CheckExact(__pyx_t_4))) || (PyList_CheckExact(__pyx_t_4))) {
+            PyObject* sequence = __pyx_t_4;
+            Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+            if (unlikely(size != 2)) {
+              if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+              else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+              __PYX_ERR(0, 246, __pyx_L1_error)
+            }
+            #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+            if (likely(PyTuple_CheckExact(sequence))) {
+              __pyx_t_16 = PyTuple_GET_ITEM(sequence, 0);
+              __Pyx_INCREF(__pyx_t_16);
+              __pyx_t_13 = PyTuple_GET_ITEM(sequence, 1);
+              __Pyx_INCREF(__pyx_t_13);
+            } else {
+              __pyx_t_16 = __Pyx_PyList_GetItemRefFast(sequence, 0, __Pyx_ReferenceSharing_SharedReference);
+              if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 246, __pyx_L1_error)
+              __Pyx_XGOTREF(__pyx_t_16);
+              __pyx_t_13 = __Pyx_PyList_GetItemRefFast(sequence, 1, __Pyx_ReferenceSharing_SharedReference);
+              if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 246, __pyx_L1_error)
+              __Pyx_XGOTREF(__pyx_t_13);
+            }
+            #else
+            __pyx_t_16 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 246, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __pyx_t_13 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 246, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            #endif
+            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+          } else {
+            Py_ssize_t index = -1;
+            __pyx_t_2 = PyObject_GetIter(__pyx_t_4); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 246, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_2);
+            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+            __pyx_t_20 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_2);
+            index = 0; __pyx_t_16 = __pyx_t_20(__pyx_t_2); if (unlikely(!__pyx_t_16)) goto __pyx_L62_unpacking_failed;
+            __Pyx_GOTREF(__pyx_t_16);
+            index = 1; __pyx_t_13 = __pyx_t_20(__pyx_t_2); if (unlikely(!__pyx_t_13)) goto __pyx_L62_unpacking_failed;
+            __Pyx_GOTREF(__pyx_t_13);
+            if (__Pyx_IternextUnpackEndCheck(__pyx_t_20(__pyx_t_2), 2) < (0)) __PYX_ERR(0, 246, __pyx_L1_error)
+            __pyx_t_20 = NULL;
+            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            goto __pyx_L63_unpacking_done;
+            __pyx_L62_unpacking_failed:;
+            __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+            __pyx_t_20 = NULL;
+            if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+            __PYX_ERR(0, 246, __pyx_L1_error)
+            __pyx_L63_unpacking_done:;
+          }
+          __Pyx_XDECREF_SET(__pyx_v_mid, __pyx_t_16);
+          __pyx_t_16 = 0;
+          __Pyx_XDECREF_SET(__pyx_v_dur, __pyx_t_13);
+          __pyx_t_13 = 0;
+
+          /* "scheduler.pyx":247
+ *                     for idx in range(len(sesiones_por_dia[dia])):
+ *                         mid, dur = sesiones_por_dia[dia][idx]
+ *                         if dur == 1:             # <<<<<<<<<<<<<<
+ *                             sesiones_por_dia[dia][idx] = (mid, 2)
+ *                             horas_por_dia[dia] += 1
+*/
+          __pyx_t_7 = (__Pyx_PyLong_BoolEqObjC(__pyx_v_dur, __pyx_mstate_global->__pyx_int_1, 1, 0)); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 247, __pyx_L1_error)
+          if (__pyx_t_7) {
+
+            /* "scheduler.pyx":248
+ *                         mid, dur = sesiones_por_dia[dia][idx]
+ *                         if dur == 1:
+ *                             sesiones_por_dia[dia][idx] = (mid, 2)             # <<<<<<<<<<<<<<
+ *                             horas_por_dia[dia] += 1
+ *                             materia_doble_dia[dia] = mid
+*/
+            __pyx_t_4 = PyTuple_New(2); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 248, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_4);
+            __Pyx_INCREF(__pyx_v_mid);
+            __Pyx_GIVEREF(__pyx_v_mid);
+            if (__Pyx_PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_v_mid) != (0)) __PYX_ERR(0, 248, __pyx_L1_error);
+            __Pyx_INCREF(__pyx_mstate_global->__pyx_int_2);
+            __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_2);
+            if (__Pyx_PyTuple_SET_ITEM(__pyx_t_4, 1, __pyx_mstate_global->__pyx_int_2) != (0)) __PYX_ERR(0, 248, __pyx_L1_error);
+            __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 248, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            if (unlikely((__Pyx_SetItemInt(__pyx_t_13, __pyx_v_idx, __pyx_t_4, Py_ssize_t, 1, PyLong_FromSsize_t, 0, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference) < 0))) __PYX_ERR(0, 248, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+
+            /* "scheduler.pyx":249
+ *                         if dur == 1:
+ *                             sesiones_por_dia[dia][idx] = (mid, 2)
+ *                             horas_por_dia[dia] += 1             # <<<<<<<<<<<<<<
+ *                             materia_doble_dia[dia] = mid
+ *                             break
+*/
+            __pyx_t_21 = __pyx_v_dia;
+            __pyx_t_4 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_t_21, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 249, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_4);
+            __pyx_t_13 = __Pyx_PyLong_AddObjC(__pyx_t_4, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 249, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+            if (unlikely((__Pyx_SetItemInt(__pyx_v_horas_por_dia, __pyx_t_21, __pyx_t_13, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference) < 0))) __PYX_ERR(0, 249, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+            /* "scheduler.pyx":250
+ *                             sesiones_por_dia[dia][idx] = (mid, 2)
+ *                             horas_por_dia[dia] += 1
+ *                             materia_doble_dia[dia] = mid             # <<<<<<<<<<<<<<
+ *                             break
+ * 
+*/
+            if (unlikely((__Pyx_SetItemInt(__pyx_v_materia_doble_dia, __pyx_v_dia, __pyx_v_mid, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference) < 0))) __PYX_ERR(0, 250, __pyx_L1_error)
+
+            /* "scheduler.pyx":251
+ *                             horas_por_dia[dia] += 1
+ *                             materia_doble_dia[dia] = mid
+ *                             break             # <<<<<<<<<<<<<<
+ * 
+ *                 # Paso 2: Agregar ms materias hasta llenar el da
+*/
+            goto __pyx_L61_break;
+
+            /* "scheduler.pyx":247
+ *                     for idx in range(len(sesiones_por_dia[dia])):
+ *                         mid, dur = sesiones_por_dia[dia][idx]
+ *                         if dur == 1:             # <<<<<<<<<<<<<<
+ *                             sesiones_por_dia[dia][idx] = (mid, 2)
+ *                             horas_por_dia[dia] += 1
+*/
+          }
+        }
+        __pyx_L61_break:;
+
+        /* "scheduler.pyx":244
+ *             for dia in range(DIAS_SEMANA):
+ *                 # Paso 1: Convertir una materia a 2 horas si es necesario
+ *                 if horas_por_dia[dia] < horas_disponibles_dia and materia_doble_dia[dia] == -1:             # <<<<<<<<<<<<<<
+ *                     for idx in range(len(sesiones_por_dia[dia])):
+ *                         mid, dur = sesiones_por_dia[dia][idx]
+*/
+      }
+
+      /* "scheduler.pyx":254
+ * 
+ *                 # Paso 2: Agregar ms materias hasta llenar el da
+ *                 while horas_por_dia[dia] < horas_disponibles_dia:             # <<<<<<<<<<<<<<
+ *                     agregada = False
+ * 
+*/
+      while (1) {
+        __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 254, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __pyx_t_4 = PyObject_RichCompare(__pyx_t_13, __pyx_v_horas_disponibles_dia, Py_LT); __Pyx_XGOTREF(__pyx_t_4); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 254, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+        __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_4); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 254, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+        if (!__pyx_t_7) break;
+
+        /* "scheduler.pyx":255
+ *                 # Paso 2: Agregar ms materias hasta llenar el da
+ *                 while horas_por_dia[dia] < horas_disponibles_dia:
+ *                     agregada = False             # <<<<<<<<<<<<<<
+ * 
+ *                     # Primero intentar materias que no estn en este da
+*/
+        __pyx_v_agregada = 0;
+
+        /* "scheduler.pyx":258
+ * 
+ *                     # Primero intentar materias que no estn en este da
+ *                     for materia_info in materias_con_horas:             # <<<<<<<<<<<<<<
+ *                         mid = materia_info['id']
+ *                         ya_en_dia = False
+*/
+        __pyx_t_4 = __pyx_v_materias_con_horas; __Pyx_INCREF(__pyx_t_4);
+        __pyx_t_6 = 0;
+        for (;;) {
+          {
+            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_4);
+            #if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 258, __pyx_L1_error)
+            #endif
+            if (__pyx_t_6 >= __pyx_temp) break;
+          }
+          __pyx_t_13 = __Pyx_PyList_GetItemRefFast(__pyx_t_4, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
+          ++__pyx_t_6;
+          if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 258, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __Pyx_XDECREF_SET(__pyx_v_materia_info, __pyx_t_13);
+          __pyx_t_13 = 0;
+
+          /* "scheduler.pyx":259
+ *                     # Primero intentar materias que no estn en este da
+ *                     for materia_info in materias_con_horas:
+ *                         mid = materia_info['id']             # <<<<<<<<<<<<<<
+ *                         ya_en_dia = False
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:
+*/
+          __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_v_materia_info, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 259, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __Pyx_XDECREF_SET(__pyx_v_mid, __pyx_t_13);
+          __pyx_t_13 = 0;
+
+          /* "scheduler.pyx":260
+ *                     for materia_info in materias_con_horas:
+ *                         mid = materia_info['id']
+ *                         ya_en_dia = False             # <<<<<<<<<<<<<<
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:
+ *                             if existing_mid == mid:
+*/
+          __pyx_v_ya_en_dia = 0;
+
+          /* "scheduler.pyx":261
+ *                         mid = materia_info['id']
+ *                         ya_en_dia = False
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:             # <<<<<<<<<<<<<<
+ *                             if existing_mid == mid:
+ *                                 ya_en_dia = True
+*/
+          __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 261, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          if (likely(PyList_CheckExact(__pyx_t_13)) || PyTuple_CheckExact(__pyx_t_13)) {
+            __pyx_t_16 = __pyx_t_13; __Pyx_INCREF(__pyx_t_16);
+            __pyx_t_14 = 0;
+            __pyx_t_9 = NULL;
+          } else {
+            __pyx_t_14 = -1; __pyx_t_16 = PyObject_GetIter(__pyx_t_13); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 261, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_16); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 261, __pyx_L1_error)
+          }
+          __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+          for (;;) {
+            if (likely(!__pyx_t_9)) {
+              if (likely(PyList_CheckExact(__pyx_t_16))) {
+                {
+                  Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_16);
+                  #if !CYTHON_ASSUME_SAFE_SIZE
+                  if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 261, __pyx_L1_error)
+                  #endif
+                  if (__pyx_t_14 >= __pyx_temp) break;
+                }
+                __pyx_t_13 = __Pyx_PyList_GetItemRefFast(__pyx_t_16, __pyx_t_14, __Pyx_ReferenceSharing_OwnStrongReference);
+                ++__pyx_t_14;
+              } else {
+                {
+                  Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_16);
+                  #if !CYTHON_ASSUME_SAFE_SIZE
+                  if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 261, __pyx_L1_error)
+                  #endif
+                  if (__pyx_t_14 >= __pyx_temp) break;
+                }
+                #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+                __pyx_t_13 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_16, __pyx_t_14));
+                #else
+                __pyx_t_13 = __Pyx_PySequence_ITEM(__pyx_t_16, __pyx_t_14);
+                #endif
+                ++__pyx_t_14;
+              }
+              if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 261, __pyx_L1_error)
+            } else {
+              __pyx_t_13 = __pyx_t_9(__pyx_t_16);
+              if (unlikely(!__pyx_t_13)) {
+                PyObject* exc_type = PyErr_Occurred();
+                if (exc_type) {
+                  if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 261, __pyx_L1_error)
+                  PyErr_Clear();
+                }
+                break;
+              }
+            }
+            __Pyx_GOTREF(__pyx_t_13);
+            if ((likely(PyTuple_CheckExact(__pyx_t_13))) || (PyList_CheckExact(__pyx_t_13))) {
+              PyObject* sequence = __pyx_t_13;
+              Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+              if (unlikely(size != 2)) {
+                if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+                else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+                __PYX_ERR(0, 261, __pyx_L1_error)
+              }
+              #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+              if (likely(PyTuple_CheckExact(sequence))) {
+                __pyx_t_2 = PyTuple_GET_ITEM(sequence, 0);
+                __Pyx_INCREF(__pyx_t_2);
+                __pyx_t_3 = PyTuple_GET_ITEM(sequence, 1);
+                __Pyx_INCREF(__pyx_t_3);
+              } else {
+                __pyx_t_2 = __Pyx_PyList_GetItemRefFast(sequence, 0, __Pyx_ReferenceSharing_SharedReference);
+                if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 261, __pyx_L1_error)
+                __Pyx_XGOTREF(__pyx_t_2);
+                __pyx_t_3 = __Pyx_PyList_GetItemRefFast(sequence, 1, __Pyx_ReferenceSharing_SharedReference);
+                if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 261, __pyx_L1_error)
+                __Pyx_XGOTREF(__pyx_t_3);
+              }
+              #else
+              __pyx_t_2 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 261, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_2);
+              __pyx_t_3 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 261, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_3);
+              #endif
+              __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            } else {
+              Py_ssize_t index = -1;
+              __pyx_t_22 = PyObject_GetIter(__pyx_t_13); if (unlikely(!__pyx_t_22)) __PYX_ERR(0, 261, __pyx_L1_error)
+              __Pyx_GOTREF(__pyx_t_22);
+              __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+              __pyx_t_20 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_22);
+              index = 0; __pyx_t_2 = __pyx_t_20(__pyx_t_22); if (unlikely(!__pyx_t_2)) goto __pyx_L71_unpacking_failed;
+              __Pyx_GOTREF(__pyx_t_2);
+              index = 1; __pyx_t_3 = __pyx_t_20(__pyx_t_22); if (unlikely(!__pyx_t_3)) goto __pyx_L71_unpacking_failed;
+              __Pyx_GOTREF(__pyx_t_3);
+              if (__Pyx_IternextUnpackEndCheck(__pyx_t_20(__pyx_t_22), 2) < (0)) __PYX_ERR(0, 261, __pyx_L1_error)
+              __pyx_t_20 = NULL;
+              __Pyx_DECREF(__pyx_t_22); __pyx_t_22 = 0;
+              goto __pyx_L72_unpacking_done;
+              __pyx_L71_unpacking_failed:;
+              __Pyx_DECREF(__pyx_t_22); __pyx_t_22 = 0;
+              __pyx_t_20 = NULL;
+              if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+              __PYX_ERR(0, 261, __pyx_L1_error)
+              __pyx_L72_unpacking_done:;
+            }
+            __Pyx_XDECREF_SET(__pyx_v_existing_mid, __pyx_t_2);
+            __pyx_t_2 = 0;
+            __Pyx_XDECREF_SET(__pyx_v__, __pyx_t_3);
+            __pyx_t_3 = 0;
+
+            /* "scheduler.pyx":262
+ *                         ya_en_dia = False
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:
+ *                             if existing_mid == mid:             # <<<<<<<<<<<<<<
+ *                                 ya_en_dia = True
+ *                                 break
+*/
+            __pyx_t_13 = PyObject_RichCompare(__pyx_v_existing_mid, __pyx_v_mid, Py_EQ); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 262, __pyx_L1_error)
+            __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_13); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 262, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            if (__pyx_t_7) {
+
+              /* "scheduler.pyx":263
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:
+ *                             if existing_mid == mid:
+ *                                 ya_en_dia = True             # <<<<<<<<<<<<<<
+ *                                 break
+ * 
+*/
+              __pyx_v_ya_en_dia = 1;
+
+              /* "scheduler.pyx":264
+ *                             if existing_mid == mid:
+ *                                 ya_en_dia = True
+ *                                 break             # <<<<<<<<<<<<<<
+ * 
+ *                         if not ya_en_dia:
+*/
+              goto __pyx_L70_break;
+
+              /* "scheduler.pyx":262
+ *                         ya_en_dia = False
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:
+ *                             if existing_mid == mid:             # <<<<<<<<<<<<<<
+ *                                 ya_en_dia = True
+ *                                 break
+*/
+            }
+
+            /* "scheduler.pyx":261
+ *                         mid = materia_info['id']
+ *                         ya_en_dia = False
+ *                         for existing_mid, _ in sesiones_por_dia[dia]:             # <<<<<<<<<<<<<<
+ *                             if existing_mid == mid:
+ *                                 ya_en_dia = True
+*/
+          }
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+          goto __pyx_L74_for_end;
+          __pyx_L70_break:;
+          __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+          goto __pyx_L74_for_end;
+          __pyx_L74_for_end:;
+
+          /* "scheduler.pyx":266
+ *                                 break
+ * 
+ *                         if not ya_en_dia:             # <<<<<<<<<<<<<<
+ *                             sesiones_por_dia[dia].append((mid, 1))
+ *                             horas_por_dia[dia] += 1
+*/
+          __pyx_t_7 = (!__pyx_v_ya_en_dia);
+          if (__pyx_t_7) {
+
+            /* "scheduler.pyx":267
+ * 
+ *                         if not ya_en_dia:
+ *                             sesiones_por_dia[dia].append((mid, 1))             # <<<<<<<<<<<<<<
+ *                             horas_por_dia[dia] += 1
+ *                             agregada = True
+*/
+            __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 267, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __pyx_t_13 = PyTuple_New(2); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 267, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __Pyx_INCREF(__pyx_v_mid);
+            __Pyx_GIVEREF(__pyx_v_mid);
+            if (__Pyx_PyTuple_SET_ITEM(__pyx_t_13, 0, __pyx_v_mid) != (0)) __PYX_ERR(0, 267, __pyx_L1_error);
+            __Pyx_INCREF(__pyx_mstate_global->__pyx_int_1);
+            __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_1);
+            if (__Pyx_PyTuple_SET_ITEM(__pyx_t_13, 1, __pyx_mstate_global->__pyx_int_1) != (0)) __PYX_ERR(0, 267, __pyx_L1_error);
+            __pyx_t_10 = __Pyx_PyObject_Append(__pyx_t_16, __pyx_t_13); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 267, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+            /* "scheduler.pyx":268
+ *                         if not ya_en_dia:
+ *                             sesiones_por_dia[dia].append((mid, 1))
+ *                             horas_por_dia[dia] += 1             # <<<<<<<<<<<<<<
+ *                             agregada = True
+ *                             break
+*/
+            __pyx_t_21 = __pyx_v_dia;
+            __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_t_21, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 268, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __pyx_t_16 = __Pyx_PyLong_AddObjC(__pyx_t_13, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 268, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            if (unlikely((__Pyx_SetItemInt(__pyx_v_horas_por_dia, __pyx_t_21, __pyx_t_16, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference) < 0))) __PYX_ERR(0, 268, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+
+            /* "scheduler.pyx":269
+ *                             sesiones_por_dia[dia].append((mid, 1))
+ *                             horas_por_dia[dia] += 1
+ *                             agregada = True             # <<<<<<<<<<<<<<
+ *                             break
+ * 
+*/
+            __pyx_v_agregada = 1;
+
+            /* "scheduler.pyx":270
+ *                             horas_por_dia[dia] += 1
+ *                             agregada = True
+ *                             break             # <<<<<<<<<<<<<<
+ * 
+ *                     # Si todas ya estn, repetir cualquier materia
+*/
+            goto __pyx_L68_break;
+
+            /* "scheduler.pyx":266
+ *                                 break
+ * 
+ *                         if not ya_en_dia:             # <<<<<<<<<<<<<<
+ *                             sesiones_por_dia[dia].append((mid, 1))
+ *                             horas_por_dia[dia] += 1
+*/
+          }
+
+          /* "scheduler.pyx":258
+ * 
+ *                     # Primero intentar materias que no estn en este da
+ *                     for materia_info in materias_con_horas:             # <<<<<<<<<<<<<<
+ *                         mid = materia_info['id']
+ *                         ya_en_dia = False
+*/
+        }
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+        goto __pyx_L76_for_end;
+        __pyx_L68_break:;
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+        goto __pyx_L76_for_end;
+        __pyx_L76_for_end:;
+
+        /* "scheduler.pyx":273
+ * 
+ *                     # Si todas ya estn, repetir cualquier materia
+ *                     if not agregada:             # <<<<<<<<<<<<<<
+ *                         if len(materias_con_horas) > 0:
+ *                             # Rotar por las materias para no repetir siempre la misma
+*/
+        __pyx_t_7 = (!__pyx_v_agregada);
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":274
+ *                     # Si todas ya estn, repetir cualquier materia
+ *                     if not agregada:
+ *                         if len(materias_con_horas) > 0:             # <<<<<<<<<<<<<<
+ *                             # Rotar por las materias para no repetir siempre la misma
+ *                             idx_materia = horas_por_dia[dia] % len(materias_con_horas)
+*/
+          __pyx_t_6 = __Pyx_PyList_GET_SIZE(__pyx_v_materias_con_horas); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 274, __pyx_L1_error)
+          __pyx_t_7 = (__pyx_t_6 > 0);
+          if (__pyx_t_7) {
+
+            /* "scheduler.pyx":276
+ *                         if len(materias_con_horas) > 0:
+ *                             # Rotar por las materias para no repetir siempre la misma
+ *                             idx_materia = horas_por_dia[dia] % len(materias_con_horas)             # <<<<<<<<<<<<<<
+ *                             mid = materias_con_horas[idx_materia]['id']
+ *                             sesiones_por_dia[dia].append((mid, 1))
+*/
+            __pyx_t_4 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 276, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_4);
+            __pyx_t_6 = __Pyx_PyList_GET_SIZE(__pyx_v_materias_con_horas); if (unlikely(__pyx_t_6 == ((Py_ssize_t)-1))) __PYX_ERR(0, 276, __pyx_L1_error)
+            __pyx_t_16 = PyLong_FromSsize_t(__pyx_t_6); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 276, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __pyx_t_13 = PyNumber_Remainder(__pyx_t_4, __pyx_t_16); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 276, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            __Pyx_XDECREF_SET(__pyx_v_idx_materia, __pyx_t_13);
+            __pyx_t_13 = 0;
+
+            /* "scheduler.pyx":277
+ *                             # Rotar por las materias para no repetir siempre la misma
+ *                             idx_materia = horas_por_dia[dia] % len(materias_con_horas)
+ *                             mid = materias_con_horas[idx_materia]['id']             # <<<<<<<<<<<<<<
+ *                             sesiones_por_dia[dia].append((mid, 1))
+ *                             horas_por_dia[dia] += 1
+*/
+            __pyx_t_13 = __Pyx_PyObject_GetItem(__pyx_v_materias_con_horas, __pyx_v_idx_materia); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 277, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __pyx_t_16 = __Pyx_PyObject_Dict_GetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 277, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            __Pyx_XDECREF_SET(__pyx_v_mid, __pyx_t_16);
+            __pyx_t_16 = 0;
+
+            /* "scheduler.pyx":278
+ *                             idx_materia = horas_por_dia[dia] % len(materias_con_horas)
+ *                             mid = materias_con_horas[idx_materia]['id']
+ *                             sesiones_por_dia[dia].append((mid, 1))             # <<<<<<<<<<<<<<
+ *                             horas_por_dia[dia] += 1
+ *                         else:
+*/
+            __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 278, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __pyx_t_13 = PyTuple_New(2); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 278, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __Pyx_INCREF(__pyx_v_mid);
+            __Pyx_GIVEREF(__pyx_v_mid);
+            if (__Pyx_PyTuple_SET_ITEM(__pyx_t_13, 0, __pyx_v_mid) != (0)) __PYX_ERR(0, 278, __pyx_L1_error);
+            __Pyx_INCREF(__pyx_mstate_global->__pyx_int_1);
+            __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_1);
+            if (__Pyx_PyTuple_SET_ITEM(__pyx_t_13, 1, __pyx_mstate_global->__pyx_int_1) != (0)) __PYX_ERR(0, 278, __pyx_L1_error);
+            __pyx_t_10 = __Pyx_PyObject_Append(__pyx_t_16, __pyx_t_13); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 278, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+            /* "scheduler.pyx":279
+ *                             mid = materias_con_horas[idx_materia]['id']
+ *                             sesiones_por_dia[dia].append((mid, 1))
+ *                             horas_por_dia[dia] += 1             # <<<<<<<<<<<<<<
+ *                         else:
+ *                             break
+*/
+            __pyx_t_21 = __pyx_v_dia;
+            __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_horas_por_dia, __pyx_t_21, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 279, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_13);
+            __pyx_t_16 = __Pyx_PyLong_AddObjC(__pyx_t_13, __pyx_mstate_global->__pyx_int_1, 1, 1, 0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 279, __pyx_L1_error)
+            __Pyx_GOTREF(__pyx_t_16);
+            __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+            if (unlikely((__Pyx_SetItemInt(__pyx_v_horas_por_dia, __pyx_t_21, __pyx_t_16, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference) < 0))) __PYX_ERR(0, 279, __pyx_L1_error)
+            __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+
+            /* "scheduler.pyx":274
+ *                     # Si todas ya estn, repetir cualquier materia
+ *                     if not agregada:
+ *                         if len(materias_con_horas) > 0:             # <<<<<<<<<<<<<<
+ *                             # Rotar por las materias para no repetir siempre la misma
+ *                             idx_materia = horas_por_dia[dia] % len(materias_con_horas)
+*/
+            goto __pyx_L78;
+          }
+
+          /* "scheduler.pyx":281
+ *                             horas_por_dia[dia] += 1
+ *                         else:
+ *                             break             # <<<<<<<<<<<<<<
+ * 
+ *             # Copiar a bloques_por_dia
+*/
+          /*else*/ {
+            goto __pyx_L66_break;
+          }
+          __pyx_L78:;
+
+          /* "scheduler.pyx":273
+ * 
+ *                     # Si todas ya estn, repetir cualquier materia
+ *                     if not agregada:             # <<<<<<<<<<<<<<
+ *                         if len(materias_con_horas) > 0:
+ *                             # Rotar por las materias para no repetir siempre la misma
+*/
+        }
+      }
+      __pyx_L66_break:;
+    }
+
+    /* "scheduler.pyx":284
+ * 
+ *             # Copiar a bloques_por_dia
+ *             bloques_por_dia = []             # <<<<<<<<<<<<<<
+ *             for dia in range(DIAS_SEMANA):
+ *                 bloques_por_dia.append(sesiones_por_dia[dia][:])
+*/
+    __pyx_t_16 = PyList_New(0); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 284, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_16);
+    __Pyx_XDECREF_SET(__pyx_v_bloques_por_dia, ((PyObject*)__pyx_t_16));
+    __pyx_t_16 = 0;
+
+    /* "scheduler.pyx":285
+ *             # Copiar a bloques_por_dia
+ *             bloques_por_dia = []
+ *             for dia in range(DIAS_SEMANA):             # <<<<<<<<<<<<<<
+ *                 bloques_por_dia.append(sesiones_por_dia[dia][:])
+ * 
+*/
+    for (__pyx_t_15 = 0; __pyx_t_15 < 5; __pyx_t_15+=1) {
+      __pyx_v_dia = __pyx_t_15;
+
+      /* "scheduler.pyx":286
+ *             bloques_por_dia = []
+ *             for dia in range(DIAS_SEMANA):
+ *                 bloques_por_dia.append(sesiones_por_dia[dia][:])             # <<<<<<<<<<<<<<
+ * 
+ *             # Ahora asignar las sesiones (bloques continuos) por da
+*/
+      __pyx_t_16 = __Pyx_GetItemInt_List(__pyx_v_sesiones_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 286, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __pyx_t_13 = __Pyx_PyObject_GetSlice(__pyx_t_16, 0, 0, NULL, NULL, &__pyx_mstate_global->__pyx_slice[0], 0, 0, 1); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 286, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+      __pyx_t_10 = __Pyx_PyList_Append(__pyx_v_bloques_por_dia, __pyx_t_13); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 286, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+    }
+
+    /* "scheduler.pyx":289
+ * 
+ *             # Ahora asignar las sesiones (bloques continuos) por da
+ *             for dia in range(DIAS_SEMANA):             # <<<<<<<<<<<<<<
+ *                 hora_actual = self.hora_min
+ * 
+*/
+    for (__pyx_t_15 = 0; __pyx_t_15 < 5; __pyx_t_15+=1) {
+      __pyx_v_dia = __pyx_t_15;
+
+      /* "scheduler.pyx":290
+ *             # Ahora asignar las sesiones (bloques continuos) por da
+ *             for dia in range(DIAS_SEMANA):
+ *                 hora_actual = self.hora_min             # <<<<<<<<<<<<<<
+ * 
+ *                 # Mezclar las sesiones del da para variar el orden
+*/
+      __pyx_t_13 = __Pyx_PyLong_From_int(__pyx_v_self->hora_min); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 290, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      __Pyx_XDECREF_SET(__pyx_v_hora_actual, __pyx_t_13);
+      __pyx_t_13 = 0;
+
+      /* "scheduler.pyx":293
+ * 
+ *                 # Mezclar las sesiones del da para variar el orden
+ *                 sesiones_dia = bloques_por_dia[dia][:]             # <<<<<<<<<<<<<<
+ *                 random.shuffle(sesiones_dia)
+ * 
+*/
+      __pyx_t_13 = __Pyx_GetItemInt_List(__pyx_v_bloques_por_dia, __pyx_v_dia, long, 1, __Pyx_PyLong_From_long, 1, 1, 1, 1, __Pyx_ReferenceSharing_OwnStrongReference); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 293, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_13);
+      __pyx_t_16 = __Pyx_PyObject_GetSlice(__pyx_t_13, 0, 0, NULL, NULL, &__pyx_mstate_global->__pyx_slice[0], 0, 0, 1); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 293, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_16);
+      __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+      __Pyx_XDECREF_SET(__pyx_v_sesiones_dia, __pyx_t_16);
+      __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":294
+ *                 # Mezclar las sesiones del da para variar el orden
+ *                 sesiones_dia = bloques_por_dia[dia][:]
+ *                 random.shuffle(sesiones_dia)             # <<<<<<<<<<<<<<
+ * 
+ *                 for materia_id, duracion in sesiones_dia:
+*/
+      __pyx_t_13 = NULL;
+      __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_random); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 294, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_4);
+      __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_shuffle); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 294, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_3);
+      __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+      __pyx_t_5 = 1;
+      #if CYTHON_UNPACK_METHODS
+      if (unlikely(PyMethod_Check(__pyx_t_3))) {
+        __pyx_t_13 = PyMethod_GET_SELF(__pyx_t_3);
+        assert(__pyx_t_13);
+        PyObject* __pyx__function = PyMethod_GET_FUNCTION(__pyx_t_3);
+        __Pyx_INCREF(__pyx_t_13);
+        __Pyx_INCREF(__pyx__function);
+        __Pyx_DECREF_SET(__pyx_t_3, __pyx__function);
+        __pyx_t_5 = 0;
+      }
+      #endif
+      {
+        PyObject *__pyx_callargs[2] = {__pyx_t_13, __pyx_v_sesiones_dia};
+        __pyx_t_16 = __Pyx_PyObject_FastCall((PyObject*)__pyx_t_3, __pyx_callargs+__pyx_t_5, (2-__pyx_t_5) | (__pyx_t_5*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+        __Pyx_XDECREF(__pyx_t_13); __pyx_t_13 = 0;
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 294, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_16);
+      }
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+
+      /* "scheduler.pyx":296
+ *                 random.shuffle(sesiones_dia)
+ * 
+ *                 for materia_id, duracion in sesiones_dia:             # <<<<<<<<<<<<<<
+ *                     if hora_actual + duracion > self.hora_max:
+ *                         break
+*/
+      if (likely(PyList_CheckExact(__pyx_v_sesiones_dia)) || PyTuple_CheckExact(__pyx_v_sesiones_dia)) {
+        __pyx_t_16 = __pyx_v_sesiones_dia; __Pyx_INCREF(__pyx_t_16);
+        __pyx_t_6 = 0;
+        __pyx_t_9 = NULL;
+      } else {
+        __pyx_t_6 = -1; __pyx_t_16 = PyObject_GetIter(__pyx_v_sesiones_dia); if (unlikely(!__pyx_t_16)) __PYX_ERR(0, 296, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_16);
+        __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_16); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 296, __pyx_L1_error)
+      }
+      for (;;) {
+        if (likely(!__pyx_t_9)) {
+          if (likely(PyList_CheckExact(__pyx_t_16))) {
+            {
+              Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_16);
+              #if !CYTHON_ASSUME_SAFE_SIZE
+              if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 296, __pyx_L1_error)
+              #endif
+              if (__pyx_t_6 >= __pyx_temp) break;
+            }
+            __pyx_t_3 = __Pyx_PyList_GetItemRefFast(__pyx_t_16, __pyx_t_6, __Pyx_ReferenceSharing_OwnStrongReference);
+            ++__pyx_t_6;
+          } else {
+            {
+              Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_16);
+              #if !CYTHON_ASSUME_SAFE_SIZE
+              if (unlikely((__pyx_temp < 0))) __PYX_ERR(0, 296, __pyx_L1_error)
+              #endif
+              if (__pyx_t_6 >= __pyx_temp) break;
+            }
+            #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+            __pyx_t_3 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_16, __pyx_t_6));
+            #else
+            __pyx_t_3 = __Pyx_PySequence_ITEM(__pyx_t_16, __pyx_t_6);
+            #endif
+            ++__pyx_t_6;
+          }
+          if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 296, __pyx_L1_error)
+        } else {
+          __pyx_t_3 = __pyx_t_9(__pyx_t_16);
+          if (unlikely(!__pyx_t_3)) {
+            PyObject* exc_type = PyErr_Occurred();
+            if (exc_type) {
+              if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(0, 296, __pyx_L1_error)
+              PyErr_Clear();
+            }
+            break;
+          }
+        }
+        __Pyx_GOTREF(__pyx_t_3);
+        if ((likely(PyTuple_CheckExact(__pyx_t_3))) || (PyList_CheckExact(__pyx_t_3))) {
+          PyObject* sequence = __pyx_t_3;
+          Py_ssize_t size = __Pyx_PySequence_SIZE(sequence);
+          if (unlikely(size != 2)) {
+            if (size > 2) __Pyx_RaiseTooManyValuesError(2);
+            else if (size >= 0) __Pyx_RaiseNeedMoreValuesError(size);
+            __PYX_ERR(0, 296, __pyx_L1_error)
+          }
+          #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+          if (likely(PyTuple_CheckExact(sequence))) {
+            __pyx_t_13 = PyTuple_GET_ITEM(sequence, 0);
+            __Pyx_INCREF(__pyx_t_13);
+            __pyx_t_4 = PyTuple_GET_ITEM(sequence, 1);
+            __Pyx_INCREF(__pyx_t_4);
+          } else {
+            __pyx_t_13 = __Pyx_PyList_GetItemRefFast(sequence, 0, __Pyx_ReferenceSharing_SharedReference);
+            if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 296, __pyx_L1_error)
+            __Pyx_XGOTREF(__pyx_t_13);
+            __pyx_t_4 = __Pyx_PyList_GetItemRefFast(sequence, 1, __Pyx_ReferenceSharing_SharedReference);
+            if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 296, __pyx_L1_error)
+            __Pyx_XGOTREF(__pyx_t_4);
+          }
+          #else
+          __pyx_t_13 = __Pyx_PySequence_ITEM(sequence, 0); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 296, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+          __pyx_t_4 = __Pyx_PySequence_ITEM(sequence, 1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 296, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_4);
+          #endif
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        } else {
+          Py_ssize_t index = -1;
+          __pyx_t_2 = PyObject_GetIter(__pyx_t_3); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 296, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_2);
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+          __pyx_t_20 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_2);
+          index = 0; __pyx_t_13 = __pyx_t_20(__pyx_t_2); if (unlikely(!__pyx_t_13)) goto __pyx_L85_unpacking_failed;
+          __Pyx_GOTREF(__pyx_t_13);
+          index = 1; __pyx_t_4 = __pyx_t_20(__pyx_t_2); if (unlikely(!__pyx_t_4)) goto __pyx_L85_unpacking_failed;
+          __Pyx_GOTREF(__pyx_t_4);
+          if (__Pyx_IternextUnpackEndCheck(__pyx_t_20(__pyx_t_2), 2) < (0)) __PYX_ERR(0, 296, __pyx_L1_error)
+          __pyx_t_20 = NULL;
+          __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+          goto __pyx_L86_unpacking_done;
+          __pyx_L85_unpacking_failed:;
+          __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+          __pyx_t_20 = NULL;
+          if (__Pyx_IterFinish() == 0) __Pyx_RaiseNeedMoreValuesError(index);
+          __PYX_ERR(0, 296, __pyx_L1_error)
+          __pyx_L86_unpacking_done:;
+        }
+        __Pyx_XDECREF_SET(__pyx_v_materia_id, __pyx_t_13);
+        __pyx_t_13 = 0;
+        __Pyx_XDECREF_SET(__pyx_v_duracion, __pyx_t_4);
+        __pyx_t_4 = 0;
+
+        /* "scheduler.pyx":297
+ * 
+ *                 for materia_id, duracion in sesiones_dia:
+ *                     if hora_actual + duracion > self.hora_max:             # <<<<<<<<<<<<<<
+ *                         break
+ * 
+*/
+        __pyx_t_3 = PyNumber_Add(__pyx_v_hora_actual, __pyx_v_duracion); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_self->hora_max); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_4);
+        __pyx_t_13 = PyObject_RichCompare(__pyx_t_3, __pyx_t_4, Py_GT); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 297, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
+        __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_t_13); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 297, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":298
+ *                 for materia_id, duracion in sesiones_dia:
+ *                     if hora_actual + duracion > self.hora_max:
+ *                         break             # <<<<<<<<<<<<<<
+ * 
+ *                     maestro = maestro_por_materia_grupo.get(materia_id)
+*/
+          goto __pyx_L84_break;
+
+          /* "scheduler.pyx":297
+ * 
+ *                 for materia_id, duracion in sesiones_dia:
+ *                     if hora_actual + duracion > self.hora_max:             # <<<<<<<<<<<<<<
+ *                         break
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":300
+ *                         break
+ * 
+ *                     maestro = maestro_por_materia_grupo.get(materia_id)             # <<<<<<<<<<<<<<
+ *                     if not maestro:
+ *                         continue
+*/
+        __pyx_t_13 = __Pyx_PyDict_GetItemDefault(__pyx_v_maestro_por_materia_grupo, __pyx_v_materia_id, Py_None); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 300, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __Pyx_XDECREF_SET(__pyx_v_maestro, __pyx_t_13);
+        __pyx_t_13 = 0;
+
+        /* "scheduler.pyx":301
+ * 
+ *                     maestro = maestro_por_materia_grupo.get(materia_id)
+ *                     if not maestro:             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        __pyx_t_7 = __Pyx_PyObject_IsTrue(__pyx_v_maestro); if (unlikely((__pyx_t_7 < 0))) __PYX_ERR(0, 301, __pyx_L1_error)
+        __pyx_t_18 = (!__pyx_t_7);
+        if (__pyx_t_18) {
+
+          /* "scheduler.pyx":302
+ *                     maestro = maestro_por_materia_grupo.get(materia_id)
+ *                     if not maestro:
+ *                         continue             # <<<<<<<<<<<<<<
+ * 
+ *                     maestro_id = maestro['id']
+*/
+          goto __pyx_L83_continue;
+
+          /* "scheduler.pyx":301
+ * 
+ *                     maestro = maestro_por_materia_grupo.get(materia_id)
+ *                     if not maestro:             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":304
+ *                         continue
+ * 
+ *                     maestro_id = maestro['id']             # <<<<<<<<<<<<<<
+ *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
+ *                     horas_max_maestro = maestro.get('horas_max_dia', 8)
+*/
+        __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_v_maestro, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 304, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __Pyx_XDECREF_SET(__pyx_v_maestro_id, __pyx_t_13);
+        __pyx_t_13 = 0;
+
+        /* "scheduler.pyx":305
+ * 
+ *                     maestro_id = maestro['id']
+ *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])             # <<<<<<<<<<<<<<
+ *                     horas_max_maestro = maestro.get('horas_max_dia', 8)
+ * 
+*/
+        __pyx_t_4 = __pyx_v_maestro;
+        __Pyx_INCREF(__pyx_t_4);
+        __pyx_t_3 = PyList_New(5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 305, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_0);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_0);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 0, __pyx_mstate_global->__pyx_int_0) != (0)) __PYX_ERR(0, 305, __pyx_L1_error);
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_1);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_1);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 1, __pyx_mstate_global->__pyx_int_1) != (0)) __PYX_ERR(0, 305, __pyx_L1_error);
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_2);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_2);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 2, __pyx_mstate_global->__pyx_int_2) != (0)) __PYX_ERR(0, 305, __pyx_L1_error);
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_3);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_3);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 3, __pyx_mstate_global->__pyx_int_3) != (0)) __PYX_ERR(0, 305, __pyx_L1_error);
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_4);
+        __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_4);
+        if (__Pyx_PyList_SET_ITEM(__pyx_t_3, 4, __pyx_mstate_global->__pyx_int_4) != (0)) __PYX_ERR(0, 305, __pyx_L1_error);
+        __pyx_t_5 = 0;
+        {
+          PyObject *__pyx_callargs[3] = {__pyx_t_4, __pyx_mstate_global->__pyx_n_u_dias_disponibles, __pyx_t_3};
+          __pyx_t_13 = __Pyx_PyObject_FastCallMethod((PyObject*)__pyx_mstate_global->__pyx_n_u_get, __pyx_callargs+__pyx_t_5, (3-__pyx_t_5) | (1*__Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET));
+          __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
+          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+          if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 305, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_13);
+        }
+        __Pyx_XDECREF_SET(__pyx_v_dias_disponibles, __pyx_t_13);
+        __pyx_t_13 = 0;
+
+        /* "scheduler.pyx":306
+ *                     maestro_id = maestro['id']
+ *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
+ *                     horas_max_maestro = maestro.get('horas_max_dia', 8)             # <<<<<<<<<<<<<<
+ * 
+ *                     # Verificar si el maestro puede dar clase este da
+*/
+        __pyx_t_13 = __Pyx_PyObject_GetAttrStr(__pyx_v_maestro, __pyx_mstate_global->__pyx_n_u_get); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 306, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_13, __pyx_mstate_global->__pyx_tuple[0], NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 306, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+        __Pyx_XDECREF_SET(__pyx_v_horas_max_maestro, __pyx_t_3);
+        __pyx_t_3 = 0;
+
+        /* "scheduler.pyx":309
+ * 
+ *                     # Verificar si el maestro puede dar clase este da
+ *                     if dia not in dias_disponibles:             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_v_dia); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 309, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __pyx_t_18 = (__Pyx_PySequence_ContainsTF(__pyx_t_3, __pyx_v_dias_disponibles, Py_NE)); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 309, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        if (__pyx_t_18) {
+
+          /* "scheduler.pyx":310
+ *                     # Verificar si el maestro puede dar clase este da
+ *                     if dia not in dias_disponibles:
+ *                         continue             # <<<<<<<<<<<<<<
+ * 
+ *                     # Verificar horas mximas del maestro en este da
+*/
+          goto __pyx_L83_continue;
+
+          /* "scheduler.pyx":309
+ * 
+ *                     # Verificar si el maestro puede dar clase este da
+ *                     if dia not in dias_disponibles:             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":313
+ * 
+ *                     # Verificar horas mximas del maestro en este da
+ *                     horas_usadas = 0             # <<<<<<<<<<<<<<
+ *                     if maestro_id < 100:
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+*/
+        __Pyx_INCREF(__pyx_mstate_global->__pyx_int_0);
+        __Pyx_XDECREF_SET(__pyx_v_horas_usadas, __pyx_mstate_global->__pyx_int_0);
+
+        /* "scheduler.pyx":314
+ *                     # Verificar horas mximas del maestro en este da
+ *                     horas_usadas = 0
+ *                     if maestro_id < 100:             # <<<<<<<<<<<<<<
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+ *                     if horas_usadas + duracion > horas_max_maestro:
+*/
+        __pyx_t_3 = PyObject_RichCompare(__pyx_v_maestro_id, __pyx_mstate_global->__pyx_int_100, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 314, __pyx_L1_error)
+        __pyx_t_18 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 314, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        if (__pyx_t_18) {
+
+          /* "scheduler.pyx":315
+ *                     horas_usadas = 0
+ *                     if maestro_id < 100:
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]             # <<<<<<<<<<<<<<
+ *                     if horas_usadas + duracion > horas_max_maestro:
+ *                         continue
+*/
+          __pyx_t_14 = __Pyx_PyIndex_AsSsize_t(__pyx_v_maestro_id); if (unlikely((__pyx_t_14 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 315, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_PyLong_From_int(((__pyx_v_self->horas_maestro_dia[__pyx_t_14])[__pyx_v_dia])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 315, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_3);
+          __Pyx_DECREF_SET(__pyx_v_horas_usadas, __pyx_t_3);
+          __pyx_t_3 = 0;
+
+          /* "scheduler.pyx":314
+ *                     # Verificar horas mximas del maestro en este da
+ *                     horas_usadas = 0
+ *                     if maestro_id < 100:             # <<<<<<<<<<<<<<
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+ *                     if horas_usadas + duracion > horas_max_maestro:
+*/
+        }
+
+        /* "scheduler.pyx":316
+ *                     if maestro_id < 100:
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+ *                     if horas_usadas + duracion > horas_max_maestro:             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        __pyx_t_3 = PyNumber_Add(__pyx_v_horas_usadas, __pyx_v_duracion); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 316, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        __pyx_t_13 = PyObject_RichCompare(__pyx_t_3, __pyx_v_horas_max_maestro, Py_GT); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 316, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        __pyx_t_18 = __Pyx_PyObject_IsTrue(__pyx_t_13); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 316, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+        if (__pyx_t_18) {
+
+          /* "scheduler.pyx":317
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+ *                     if horas_usadas + duracion > horas_max_maestro:
+ *                         continue             # <<<<<<<<<<<<<<
+ * 
+ *                     hora_fin = hora_actual + duracion
+*/
+          goto __pyx_L83_continue;
+
+          /* "scheduler.pyx":316
+ *                     if maestro_id < 100:
+ *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+ *                     if horas_usadas + duracion > horas_max_maestro:             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":319
+ *                         continue
+ * 
+ *                     hora_fin = hora_actual + duracion             # <<<<<<<<<<<<<<
+ * 
+ *                     # Verificar disponibilidad del maestro (sin empalmes) para todo el bloque
+*/
+        __pyx_t_13 = PyNumber_Add(__pyx_v_hora_actual, __pyx_v_duracion); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 319, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        __Pyx_XDECREF_SET(__pyx_v_hora_fin, __pyx_t_13);
+        __pyx_t_13 = 0;
+
+        /* "scheduler.pyx":322
+ * 
+ *                     # Verificar disponibilidad del maestro (sin empalmes) para todo el bloque
+ *                     if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_actual, hora_fin):             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_v_maestro_id); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 322, __pyx_L1_error)
+        __pyx_t_12 = __Pyx_PyLong_As_int(__pyx_v_hora_actual); if (unlikely((__pyx_t_12 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 322, __pyx_L1_error)
+        __pyx_t_23 = __Pyx_PyLong_As_int(__pyx_v_hora_fin); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 322, __pyx_L1_error)
+        __pyx_t_18 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->validar_disponibilidad_maestro(__pyx_v_self, __pyx_t_11, __pyx_v_dia, __pyx_t_12, __pyx_t_23); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 322, __pyx_L1_error)
+        __pyx_t_7 = (!__pyx_t_18);
+        if (__pyx_t_7) {
+
+          /* "scheduler.pyx":323
+ *                     # Verificar disponibilidad del maestro (sin empalmes) para todo el bloque
+ *                     if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_actual, hora_fin):
+ *                         continue             # <<<<<<<<<<<<<<
+ * 
+ *                     # Verificar disponibilidad del grupo para todo el bloque
+*/
+          goto __pyx_L83_continue;
+
+          /* "scheduler.pyx":322
+ * 
+ *                     # Verificar disponibilidad del maestro (sin empalmes) para todo el bloque
+ *                     if not self.validar_disponibilidad_maestro(maestro_id, dia, hora_actual, hora_fin):             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":326
+ * 
+ *                     # Verificar disponibilidad del grupo para todo el bloque
+ *                     if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_actual, hora_fin):             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        __pyx_t_23 = __Pyx_PyLong_As_int(__pyx_v_grupo_id); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 326, __pyx_L1_error)
+        __pyx_t_12 = __Pyx_PyLong_As_int(__pyx_v_hora_actual); if (unlikely((__pyx_t_12 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 326, __pyx_L1_error)
+        __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_v_hora_fin); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 326, __pyx_L1_error)
+        __pyx_t_7 = ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->validar_disponibilidad_grupo(__pyx_v_self, __pyx_t_23, __pyx_v_dia, __pyx_t_12, __pyx_t_11); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 326, __pyx_L1_error)
+        __pyx_t_18 = (!__pyx_t_7);
+        if (__pyx_t_18) {
+
+          /* "scheduler.pyx":327
+ *                     # Verificar disponibilidad del grupo para todo el bloque
+ *                     if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_actual, hora_fin):
+ *                         continue             # <<<<<<<<<<<<<<
+ * 
+ *                     # Realizar la asignacin del bloque completo
+*/
+          goto __pyx_L83_continue;
+
+          /* "scheduler.pyx":326
+ * 
+ *                     # Verificar disponibilidad del grupo para todo el bloque
+ *                     if not self.validar_disponibilidad_grupo(grupo_id, dia, hora_actual, hora_fin):             # <<<<<<<<<<<<<<
+ *                         continue
+ * 
+*/
+        }
+
+        /* "scheduler.pyx":330
+ * 
+ *                     # Realizar la asignacin del bloque completo
+ *                     self.marcar_ocupado(maestro_id, grupo_id, dia, hora_actual, hora_fin)             # <<<<<<<<<<<<<<
+ * 
+ *                     asignaciones.append({
+*/
+        __pyx_t_11 = __Pyx_PyLong_As_int(__pyx_v_maestro_id); if (unlikely((__pyx_t_11 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 330, __pyx_L1_error)
+        __pyx_t_12 = __Pyx_PyLong_As_int(__pyx_v_grupo_id); if (unlikely((__pyx_t_12 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 330, __pyx_L1_error)
+        __pyx_t_23 = __Pyx_PyLong_As_int(__pyx_v_hora_actual); if (unlikely((__pyx_t_23 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 330, __pyx_L1_error)
+        __pyx_t_24 = __Pyx_PyLong_As_int(__pyx_v_hora_fin); if (unlikely((__pyx_t_24 == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 330, __pyx_L1_error)
+        ((struct __pyx_vtabstruct_9scheduler_SchedulerEngine *)__pyx_v_self->__pyx_vtab)->marcar_ocupado(__pyx_v_self, __pyx_t_11, __pyx_t_12, __pyx_v_dia, __pyx_t_23, __pyx_t_24); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 330, __pyx_L1_error)
+
+        /* "scheduler.pyx":333
+ * 
+ *                     asignaciones.append({
+ *                         'maestro_id': maestro_id,             # <<<<<<<<<<<<<<
+ *                         'materia_id': materia_id,
+ *                         'grupo_id': grupo_id,
+*/
+        __pyx_t_13 = __Pyx_PyDict_NewPresized(6); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 333, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_13);
+        if (PyDict_SetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_maestro_id, __pyx_v_maestro_id) < (0)) __PYX_ERR(0, 333, __pyx_L1_error)
+
+        /* "scheduler.pyx":334
+ *                     asignaciones.append({
+ *                         'maestro_id': maestro_id,
+ *                         'materia_id': materia_id,             # <<<<<<<<<<<<<<
+ *                         'grupo_id': grupo_id,
+ *                         'dia_semana': dia,
+*/
+        if (PyDict_SetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_materia_id, __pyx_v_materia_id) < (0)) __PYX_ERR(0, 333, __pyx_L1_error)
+
+        /* "scheduler.pyx":335
+ *                         'maestro_id': maestro_id,
+ *                         'materia_id': materia_id,
+ *                         'grupo_id': grupo_id,             # <<<<<<<<<<<<<<
+ *                         'dia_semana': dia,
+ *                         'hora_inicio': hora_actual,
+*/
+        if (PyDict_SetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_grupo_id, __pyx_v_grupo_id) < (0)) __PYX_ERR(0, 333, __pyx_L1_error)
+
+        /* "scheduler.pyx":336
+ *                         'materia_id': materia_id,
+ *                         'grupo_id': grupo_id,
+ *                         'dia_semana': dia,             # <<<<<<<<<<<<<<
+ *                         'hora_inicio': hora_actual,
+ *                         'hora_fin': hora_fin
+*/
+        __pyx_t_3 = __Pyx_PyLong_From_long(__pyx_v_dia); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 336, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_3);
+        if (PyDict_SetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_dia_semana, __pyx_t_3) < (0)) __PYX_ERR(0, 333, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+
+        /* "scheduler.pyx":337
+ *                         'grupo_id': grupo_id,
+ *                         'dia_semana': dia,
+ *                         'hora_inicio': hora_actual,             # <<<<<<<<<<<<<<
+ *                         'hora_fin': hora_fin
+ *                     })
+*/
+        if (PyDict_SetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_hora_inicio, __pyx_v_hora_actual) < (0)) __PYX_ERR(0, 333, __pyx_L1_error)
+
+        /* "scheduler.pyx":338
+ *                         'dia_semana': dia,
+ *                         'hora_inicio': hora_actual,
+ *                         'hora_fin': hora_fin             # <<<<<<<<<<<<<<
+ *                     })
+ * 
+*/
+        if (PyDict_SetItem(__pyx_t_13, __pyx_mstate_global->__pyx_n_u_hora_fin, __pyx_v_hora_fin) < (0)) __PYX_ERR(0, 333, __pyx_L1_error)
+
+        /* "scheduler.pyx":332
+ *                     self.marcar_ocupado(maestro_id, grupo_id, dia, hora_actual, hora_fin)
+ * 
+ *                     asignaciones.append({             # <<<<<<<<<<<<<<
+ *                         'maestro_id': maestro_id,
+ *                         'materia_id': materia_id,
+*/
+        __pyx_t_10 = __Pyx_PyList_Append(__pyx_v_asignaciones, __pyx_t_13); if (unlikely(__pyx_t_10 == ((int)-1))) __PYX_ERR(0, 332, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
+
+        /* "scheduler.pyx":341
+ *                     })
+ * 
+ *                     hora_actual = hora_fin             # <<<<<<<<<<<<<<
+ * 
+ *         return asignaciones
+*/
+        __Pyx_INCREF(__pyx_v_hora_fin);
+        __Pyx_DECREF_SET(__pyx_v_hora_actual, __pyx_v_hora_fin);
+
+        /* "scheduler.pyx":296
+ *                 random.shuffle(sesiones_dia)
+ * 
+ *                 for materia_id, duracion in sesiones_dia:             # <<<<<<<<<<<<<<
+ *                     if hora_actual + duracion > self.hora_max:
+ *                         break
+*/
+        __pyx_L83_continue:;
+      }
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+      goto __pyx_L94_for_end;
+      __pyx_L84_break:;
+      __Pyx_DECREF(__pyx_t_16); __pyx_t_16 = 0;
+      goto __pyx_L94_for_end;
+      __pyx_L94_for_end:;
+    }
+
+    /* "scheduler.pyx":148
+ * 
+ *         # Para cada grupo
+ *         for grupo in grupos_data:             # <<<<<<<<<<<<<<
+ *             grupo_id = grupo['id']
+ * 
 */
   }
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "scheduler.pyx":207
- *                         break
+  /* "scheduler.pyx":343
+ *                     hora_actual = hora_fin
  * 
  *         return asignaciones             # <<<<<<<<<<<<<<
 */
@@ -6054,12 +8729,12 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
   __pyx_r = __pyx_v_asignaciones;
   goto __pyx_L0;
 
-  /* "scheduler.pyx":131
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0
+  /* "scheduler.pyx":109
+ *             self.horas_maestro_dia[maestro_id][dia] += duracion
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):             # <<<<<<<<<<<<<<
  *         """
- *         Genera el horario completo usando backtracking
+ *         Genera el horario completo distribuyendo materias de forma inteligente:
 */
 
   /* function exit code */
@@ -6068,20 +8743,50 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
   __Pyx_XDECREF(__pyx_t_2);
   __Pyx_XDECREF(__pyx_t_3);
   __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_XDECREF(__pyx_t_11);
-  __Pyx_XDECREF(__pyx_t_12);
   __Pyx_XDECREF(__pyx_t_13);
   __Pyx_XDECREF(__pyx_t_16);
+  __Pyx_XDECREF(__pyx_t_22);
   __Pyx_AddTraceback("scheduler.SchedulerEngine.generar_horario", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_asignaciones);
-  __Pyx_XDECREF(__pyx_v_materia);
-  __Pyx_XDECREF(__pyx_v_grupo);
-  __Pyx_XDECREF(__pyx_v_horas_restantes);
+  __Pyx_XDECREF(__pyx_v_materias_a_usar);
+  __Pyx_XDECREF(__pyx_v_maestros_por_materia);
   __Pyx_XDECREF(__pyx_v_maestro);
-  __Pyx_XDECREF(__pyx_v_hora_inicio);
+  __Pyx_XDECREF(__pyx_v_materias_maestro);
+  __Pyx_XDECREF(__pyx_v_materia_id);
+  __Pyx_XDECREF(__pyx_v_grupo);
+  __Pyx_XDECREF(__pyx_v_grupo_id);
+  __Pyx_XDECREF(__pyx_v_maestro_por_materia_grupo);
+  __Pyx_XDECREF(__pyx_v_materias_maestro_grupo);
+  __Pyx_XDECREF(__pyx_v_materia);
+  __Pyx_XDECREF(__pyx_v_m);
+  __Pyx_XDECREF(__pyx_v_materias_con_horas);
+  __Pyx_XDECREF(__pyx_v_horas_semanales);
+  __Pyx_XDECREF(__pyx_v_horas_disponibles_dia);
+  __Pyx_XDECREF(__pyx_v_total_horas_materias);
+  __Pyx_XDECREF(__pyx_v_sesiones_por_dia);
+  __Pyx_XDECREF(__pyx_v_horas_por_dia);
+  __Pyx_XDECREF(__pyx_v_materia_doble_dia);
+  __Pyx_XDECREF(__pyx_v_i);
+  __Pyx_XDECREF(__pyx_v_j);
+  __Pyx_XDECREF(__pyx_v_materia_info);
+  __Pyx_XDECREF(__pyx_v_horas_restantes);
+  __Pyx_XDECREF(__pyx_v_dias_asignados);
+  __Pyx_XDECREF(__pyx_v_menor_carga);
+  __Pyx_XDECREF(__pyx_v_mid);
+  __Pyx_XDECREF(__pyx_v_dur);
+  __Pyx_XDECREF(__pyx_v_existing_mid);
+  __Pyx_XDECREF(__pyx_v__);
+  __Pyx_XDECREF(__pyx_v_idx_materia);
+  __Pyx_XDECREF(__pyx_v_bloques_por_dia);
+  __Pyx_XDECREF(__pyx_v_hora_actual);
+  __Pyx_XDECREF(__pyx_v_sesiones_dia);
   __Pyx_XDECREF(__pyx_v_duracion);
+  __Pyx_XDECREF(__pyx_v_maestro_id);
+  __Pyx_XDECREF(__pyx_v_dias_disponibles);
+  __Pyx_XDECREF(__pyx_v_horas_max_maestro);
+  __Pyx_XDECREF(__pyx_v_horas_usadas);
   __Pyx_XDECREF(__pyx_v_hora_fin);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
@@ -6096,7 +8801,7 @@ PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-PyDoc_STRVAR(__pyx_doc_9scheduler_15SchedulerEngine_2generar_horario, "\n        Genera el horario completo usando backtracking\n        \n        Args:\n            maestros_data: Lista de diccionarios con info de maestros\n            materias_data: Lista de diccionarios con info de materias\n            grupos_data: Lista de diccionarios con info de grupos\n        \n        Returns:\n            Lista de asignaciones generadas\n        ");
+PyDoc_STRVAR(__pyx_doc_9scheduler_15SchedulerEngine_2generar_horario, "\n        Genera el horario completo distribuyendo materias de forma inteligente:\n        - M\303\241ximo 7 materias diferentes por grupo\n        - Distribuye las horas de cada materia en DIFERENTES d\303\255as (no todo en un d\303\255a)\n        - Cada d\303\255a tiene m\303\272ltiples materias (similar a un horario universitario real)\n        - Un maestro solo puede dar UNA materia a cada grupo\n        - Sin empalmes de horarios\n        - Bloques de 1 hora para mejor distribuci\303\263n\n        \n        Args:\n            maestros_data: Lista de diccionarios con info de maestros\n            materias_data: Lista de diccionarios con info de materias\n            grupos_data: Lista de diccionarios con info de grupos\n        \n        Returns:\n            Lista de asignaciones generadas\n        ");
 static PyMethodDef __pyx_mdef_9scheduler_15SchedulerEngine_3generar_horario = {"generar_horario", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_9scheduler_15SchedulerEngine_3generar_horario, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_9scheduler_15SchedulerEngine_2generar_horario};
 static PyObject *__pyx_pw_9scheduler_15SchedulerEngine_3generar_horario(PyObject *__pyx_v_self, 
 #if CYTHON_METH_FASTCALL
@@ -6130,38 +8835,38 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   {
     PyObject ** const __pyx_pyargnames[] = {&__pyx_mstate_global->__pyx_n_u_maestros_data,&__pyx_mstate_global->__pyx_n_u_materias_data,&__pyx_mstate_global->__pyx_n_u_grupos_data,0};
     const Py_ssize_t __pyx_kwds_len = (__pyx_kwds) ? __Pyx_NumKwargs_FASTCALL(__pyx_kwds) : 0;
-    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 131, __pyx_L3_error)
+    if (unlikely(__pyx_kwds_len) < 0) __PYX_ERR(0, 109, __pyx_L3_error)
     if (__pyx_kwds_len > 0) {
       switch (__pyx_nargs) {
         case  3:
         values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 131, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 109, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  2:
         values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 131, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 109, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  1:
         values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 131, __pyx_L3_error)
+        if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 109, __pyx_L3_error)
         CYTHON_FALLTHROUGH;
         case  0: break;
         default: goto __pyx_L5_argtuple_error;
       }
       const Py_ssize_t kwd_pos_args = __pyx_nargs;
-      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "generar_horario", 0) < (0)) __PYX_ERR(0, 131, __pyx_L3_error)
+      if (__Pyx_ParseKeywords(__pyx_kwds, __pyx_kwvalues, __pyx_pyargnames, 0, values, kwd_pos_args, __pyx_kwds_len, "generar_horario", 0) < (0)) __PYX_ERR(0, 109, __pyx_L3_error)
       for (Py_ssize_t i = __pyx_nargs; i < 3; i++) {
-        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("generar_horario", 1, 3, 3, i); __PYX_ERR(0, 131, __pyx_L3_error) }
+        if (unlikely(!values[i])) { __Pyx_RaiseArgtupleInvalid("generar_horario", 1, 3, 3, i); __PYX_ERR(0, 109, __pyx_L3_error) }
       }
     } else if (unlikely(__pyx_nargs != 3)) {
       goto __pyx_L5_argtuple_error;
     } else {
       values[0] = __Pyx_ArgRef_FASTCALL(__pyx_args, 0);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 131, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[0])) __PYX_ERR(0, 109, __pyx_L3_error)
       values[1] = __Pyx_ArgRef_FASTCALL(__pyx_args, 1);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 131, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[1])) __PYX_ERR(0, 109, __pyx_L3_error)
       values[2] = __Pyx_ArgRef_FASTCALL(__pyx_args, 2);
-      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 131, __pyx_L3_error)
+      if (!CYTHON_ASSUME_SAFE_MACROS && unlikely(!values[2])) __PYX_ERR(0, 109, __pyx_L3_error)
     }
     __pyx_v_maestros_data = ((PyObject*)values[0]);
     __pyx_v_materias_data = ((PyObject*)values[1]);
@@ -6169,7 +8874,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   }
   goto __pyx_L6_skip;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("generar_horario", 1, 3, 3, __pyx_nargs); __PYX_ERR(0, 131, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("generar_horario", 1, 3, 3, __pyx_nargs); __PYX_ERR(0, 109, __pyx_L3_error)
   __pyx_L6_skip:;
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -6180,9 +8885,9 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_maestros_data), (&PyList_Type), 1, "maestros_data", 1))) __PYX_ERR(0, 131, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_materias_data), (&PyList_Type), 1, "materias_data", 1))) __PYX_ERR(0, 131, __pyx_L1_error)
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_grupos_data), (&PyList_Type), 1, "grupos_data", 1))) __PYX_ERR(0, 131, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_maestros_data), (&PyList_Type), 1, "maestros_data", 1))) __PYX_ERR(0, 109, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_materias_data), (&PyList_Type), 1, "materias_data", 1))) __PYX_ERR(0, 109, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_grupos_data), (&PyList_Type), 1, "grupos_data", 1))) __PYX_ERR(0, 109, __pyx_L1_error)
   __pyx_r = __pyx_pf_9scheduler_15SchedulerEngine_2generar_horario(((struct __pyx_obj_9scheduler_SchedulerEngine *)__pyx_v_self), __pyx_v_maestros_data, __pyx_v_materias_data, __pyx_v_grupos_data);
 
   /* function exit code */
@@ -6211,7 +8916,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_2generar_horario(struct _
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("generar_horario", 0);
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_9scheduler_15SchedulerEngine_generar_horario(__pyx_v_self, __pyx_v_maestros_data, __pyx_v_materias_data, __pyx_v_grupos_data, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 131, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_9scheduler_15SchedulerEngine_generar_horario(__pyx_v_self, __pyx_v_maestros_data, __pyx_v_materias_data, __pyx_v_grupos_data, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -6290,8 +8995,9 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   PyObject *__pyx_t_6 = NULL;
   PyObject *__pyx_t_7 = NULL;
   PyObject *__pyx_t_8 = NULL;
-  int __pyx_t_9;
+  PyObject *__pyx_t_9 = NULL;
   int __pyx_t_10;
+  int __pyx_t_11;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -6300,7 +9006,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   /* "(tree fragment)":5
  *     cdef object _dict
  *     cdef bint use_setstate
- *     state = (self.hora_max, self.hora_min, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)             # <<<<<<<<<<<<<<
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)             # <<<<<<<<<<<<<<
  *     _dict = getattr(self, '__dict__', None)
  *     if _dict is not None and _dict:
 */
@@ -6308,32 +9014,36 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __Pyx_PyLong_From_int(__pyx_v_self->hora_min); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyLong_From_int(__pyx_v_self->num_grupos); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_carray_to_py_int___5b_5_5d_(__pyx_v_self->horas_maestro_dia, 100); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_self->num_maestros); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_self->num_grupos); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyLong_From_int(__pyx_v_self->num_materias); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyLong_From_int(__pyx_v_self->num_maestros); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_6 = __Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_(__pyx_v_self->ocupacion_grupos, 5); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyLong_From_int(__pyx_v_self->num_materias); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_6);
-  __pyx_t_7 = __Pyx_carray_to_py_int___5b_13_5d__5b_100_5d_(__pyx_v_self->ocupacion_maestros, 5); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_7 = __Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(__pyx_v_self->ocupacion_grupos, 5); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_7);
-  __pyx_t_8 = PyTuple_New(7); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_8 = __Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(__pyx_v_self->ocupacion_maestros, 5); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_8);
+  __pyx_t_9 = PyTuple_New(8); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_9);
   __Pyx_GIVEREF(__pyx_t_1);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_1) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_t_1) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __Pyx_GIVEREF(__pyx_t_2);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_t_2) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_t_2) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __Pyx_GIVEREF(__pyx_t_3);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 2, __pyx_t_3) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 2, __pyx_t_3) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __Pyx_GIVEREF(__pyx_t_4);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 3, __pyx_t_4) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 3, __pyx_t_4) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __Pyx_GIVEREF(__pyx_t_5);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 4, __pyx_t_5) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 4, __pyx_t_5) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __Pyx_GIVEREF(__pyx_t_6);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 5, __pyx_t_6) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 5, __pyx_t_6) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __Pyx_GIVEREF(__pyx_t_7);
-  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 6, __pyx_t_7) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 6, __pyx_t_7) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
+  __Pyx_GIVEREF(__pyx_t_8);
+  if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 7, __pyx_t_8) != (0)) __PYX_ERR(1, 5, __pyx_L1_error);
   __pyx_t_1 = 0;
   __pyx_t_2 = 0;
   __pyx_t_3 = 0;
@@ -6341,38 +9051,39 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   __pyx_t_5 = 0;
   __pyx_t_6 = 0;
   __pyx_t_7 = 0;
-  __pyx_v_state = ((PyObject*)__pyx_t_8);
   __pyx_t_8 = 0;
+  __pyx_v_state = ((PyObject*)__pyx_t_9);
+  __pyx_t_9 = 0;
 
   /* "(tree fragment)":6
  *     cdef bint use_setstate
- *     state = (self.hora_max, self.hora_min, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
  *     _dict = getattr(self, '__dict__', None)             # <<<<<<<<<<<<<<
  *     if _dict is not None and _dict:
  *         state += (_dict,)
 */
-  __pyx_t_8 = __Pyx_GetAttr3(((PyObject *)__pyx_v_self), __pyx_mstate_global->__pyx_n_u_dict, Py_None); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 6, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_8);
-  __pyx_v__dict = __pyx_t_8;
-  __pyx_t_8 = 0;
+  __pyx_t_9 = __Pyx_GetAttr3(((PyObject *)__pyx_v_self), __pyx_mstate_global->__pyx_n_u_dict, Py_None); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 6, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_v__dict = __pyx_t_9;
+  __pyx_t_9 = 0;
 
   /* "(tree fragment)":7
- *     state = (self.hora_max, self.hora_min, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
  *     _dict = getattr(self, '__dict__', None)
  *     if _dict is not None and _dict:             # <<<<<<<<<<<<<<
  *         state += (_dict,)
  *         use_setstate = True
 */
-  __pyx_t_10 = (__pyx_v__dict != Py_None);
-  if (__pyx_t_10) {
+  __pyx_t_11 = (__pyx_v__dict != Py_None);
+  if (__pyx_t_11) {
   } else {
-    __pyx_t_9 = __pyx_t_10;
+    __pyx_t_10 = __pyx_t_11;
     goto __pyx_L4_bool_binop_done;
   }
-  __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_v__dict); if (unlikely((__pyx_t_10 < 0))) __PYX_ERR(1, 7, __pyx_L1_error)
-  __pyx_t_9 = __pyx_t_10;
+  __pyx_t_11 = __Pyx_PyObject_IsTrue(__pyx_v__dict); if (unlikely((__pyx_t_11 < 0))) __PYX_ERR(1, 7, __pyx_L1_error)
+  __pyx_t_10 = __pyx_t_11;
   __pyx_L4_bool_binop_done:;
-  if (__pyx_t_9) {
+  if (__pyx_t_10) {
 
     /* "(tree fragment)":8
  *     _dict = getattr(self, '__dict__', None)
@@ -6381,16 +9092,16 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
  *         use_setstate = True
  *     else:
 */
-    __pyx_t_8 = PyTuple_New(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 8, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_8);
+    __pyx_t_9 = PyTuple_New(1); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 8, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
     __Pyx_INCREF(__pyx_v__dict);
     __Pyx_GIVEREF(__pyx_v__dict);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_v__dict) != (0)) __PYX_ERR(1, 8, __pyx_L1_error);
-    __pyx_t_7 = PyNumber_InPlaceAdd(__pyx_v_state, __pyx_t_8); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 8, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_7);
-    __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
-    __Pyx_DECREF_SET(__pyx_v_state, ((PyObject*)__pyx_t_7));
-    __pyx_t_7 = 0;
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, __pyx_v__dict) != (0)) __PYX_ERR(1, 8, __pyx_L1_error);
+    __pyx_t_8 = PyNumber_InPlaceAdd(__pyx_v_state, __pyx_t_9); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 8, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_8);
+    __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+    __Pyx_DECREF_SET(__pyx_v_state, ((PyObject*)__pyx_t_8));
+    __pyx_t_8 = 0;
 
     /* "(tree fragment)":9
  *     if _dict is not None and _dict:
@@ -6402,7 +9113,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
     __pyx_v_use_setstate = 1;
 
     /* "(tree fragment)":7
- *     state = (self.hora_max, self.hora_min, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
  *     _dict = getattr(self, '__dict__', None)
  *     if _dict is not None and _dict:             # <<<<<<<<<<<<<<
  *         state += (_dict,)
@@ -6416,11 +9127,11 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
  *     else:
  *         use_setstate = ('False',)             # <<<<<<<<<<<<<<
  *     if use_setstate:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
 */
   /*else*/ {
-    __pyx_t_9 = __Pyx_PyObject_IsTrue(__pyx_mstate_global->__pyx_tuple[0]); if (unlikely((__pyx_t_9 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 11, __pyx_L1_error)
-    __pyx_v_use_setstate = __pyx_t_9;
+    __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_mstate_global->__pyx_tuple[1]); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 11, __pyx_L1_error)
+    __pyx_v_use_setstate = __pyx_t_10;
   }
   __pyx_L3:;
 
@@ -6428,7 +9139,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
  *     else:
  *         use_setstate = ('False',)
  *     if use_setstate:             # <<<<<<<<<<<<<<
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
  *     else:
 */
   if (__pyx_v_use_setstate) {
@@ -6436,80 +9147,80 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
     /* "(tree fragment)":13
  *         use_setstate = ('False',)
  *     if use_setstate:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, None), state             # <<<<<<<<<<<<<<
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state             # <<<<<<<<<<<<<<
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
 */
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 13, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_7);
-    __pyx_t_8 = PyTuple_New(3); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 13, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_8, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 13, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_8);
+    __pyx_t_9 = PyTuple_New(3); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 13, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
     __Pyx_INCREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 0, ((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self)))) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
-    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_184869572);
-    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_184869572);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_mstate_global->__pyx_int_184869572) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, ((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self)))) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_168994040);
+    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_168994040);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_mstate_global->__pyx_int_168994040) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
     __Pyx_INCREF(Py_None);
     __Pyx_GIVEREF(Py_None);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 2, Py_None) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
-    __pyx_t_6 = PyTuple_New(3); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 13, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_6);
-    __Pyx_GIVEREF(__pyx_t_7);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_7) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 2, Py_None) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    __pyx_t_7 = PyTuple_New(3); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 13, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
     __Pyx_GIVEREF(__pyx_t_8);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_6, 1, __pyx_t_8) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_8) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    __Pyx_GIVEREF(__pyx_t_9);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_7, 1, __pyx_t_9) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
     __Pyx_INCREF(__pyx_v_state);
     __Pyx_GIVEREF(__pyx_v_state);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_6, 2, __pyx_v_state) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
-    __pyx_t_7 = 0;
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_7, 2, __pyx_v_state) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
     __pyx_t_8 = 0;
-    __pyx_r = __pyx_t_6;
-    __pyx_t_6 = 0;
+    __pyx_t_9 = 0;
+    __pyx_r = __pyx_t_7;
+    __pyx_t_7 = 0;
     goto __pyx_L0;
 
     /* "(tree fragment)":12
  *     else:
  *         use_setstate = ('False',)
  *     if use_setstate:             # <<<<<<<<<<<<<<
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
  *     else:
 */
   }
 
   /* "(tree fragment)":15
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, state)             # <<<<<<<<<<<<<<
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)             # <<<<<<<<<<<<<<
  * def __setstate_cython__(self, __pyx_state):
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
   /*else*/ {
     __Pyx_XDECREF(__pyx_r);
-    __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 15, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_8 = PyTuple_New(3); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 15, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_8);
+    __Pyx_GetModuleGlobalName(__pyx_t_7, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 15, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_7);
+    __pyx_t_9 = PyTuple_New(3); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 15, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_9);
     __Pyx_INCREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 0, ((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self)))) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
-    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_184869572);
-    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_184869572);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_mstate_global->__pyx_int_184869572) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, ((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self)))) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
+    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_168994040);
+    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_168994040);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_mstate_global->__pyx_int_168994040) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
     __Pyx_INCREF(__pyx_v_state);
     __Pyx_GIVEREF(__pyx_v_state);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 2, __pyx_v_state) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
-    __pyx_t_7 = PyTuple_New(2); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 15, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_7);
-    __Pyx_GIVEREF(__pyx_t_6);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_7, 0, __pyx_t_6) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
-    __Pyx_GIVEREF(__pyx_t_8);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_7, 1, __pyx_t_8) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
-    __pyx_t_6 = 0;
-    __pyx_t_8 = 0;
-    __pyx_r = __pyx_t_7;
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 2, __pyx_v_state) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
+    __pyx_t_8 = PyTuple_New(2); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 15, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_8);
+    __Pyx_GIVEREF(__pyx_t_7);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_7) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
+    __Pyx_GIVEREF(__pyx_t_9);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_8, 1, __pyx_t_9) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
     __pyx_t_7 = 0;
+    __pyx_t_9 = 0;
+    __pyx_r = __pyx_t_8;
+    __pyx_t_8 = 0;
     goto __pyx_L0;
   }
 
@@ -6529,6 +9240,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   __Pyx_XDECREF(__pyx_t_6);
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
   __Pyx_AddTraceback("scheduler.SchedulerEngine.__reduce_cython__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
@@ -6541,7 +9253,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
 
 /* "(tree fragment)":16
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -6642,7 +9354,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_6__setstate_cython__(stru
   __Pyx_RefNannySetupContext("__setstate_cython__", 0);
 
   /* "(tree fragment)":17
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
  * def __setstate_cython__(self, __pyx_state):
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)             # <<<<<<<<<<<<<<
 */
@@ -6660,7 +9372,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_6__setstate_cython__(stru
 
   /* "(tree fragment)":16
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -6684,7 +9396,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_6__setstate_cython__(stru
  *     int __Pyx_UpdateUnpickledDict(object, object, Py_ssize_t) except -1
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):             # <<<<<<<<<<<<<<
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
 */
 
 /* Python wrapper */
@@ -6815,15 +9527,15 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
   /* "(tree fragment)":6
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')             # <<<<<<<<<<<<<<
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')             # <<<<<<<<<<<<<<
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)
  *     if __pyx_state is not None:
 */
-  __pyx_t_1 = __Pyx_CheckUnpickleChecksum(__pyx_v___pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, ((char const *)"hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros")); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(1, 6, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_CheckUnpickleChecksum(__pyx_v___pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, ((char const *)"hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros")); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(1, 6, __pyx_L1_error)
 
   /* "(tree fragment)":7
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)             # <<<<<<<<<<<<<<
  *     if __pyx_state is not None:
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
@@ -6842,7 +9554,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
   __pyx_t_2 = 0;
 
   /* "(tree fragment)":8
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)
  *     if __pyx_state is not None:             # <<<<<<<<<<<<<<
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
@@ -6867,7 +9579,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
     /* "(tree fragment)":8
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)
  *     if __pyx_state is not None:             # <<<<<<<<<<<<<<
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
@@ -6880,7 +9592,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
  *     return __pyx_result             # <<<<<<<<<<<<<<
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.num_grupos = __pyx_state[2]; __pyx_result.num_maestros = __pyx_state[3]; __pyx_result.num_materias = __pyx_state[4]; __pyx_result.ocupacion_grupos = __pyx_state[5]; __pyx_result.ocupacion_maestros = __pyx_state[6]
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
 */
   __Pyx_XDECREF(__pyx_r);
   __Pyx_INCREF(__pyx_v___pyx_result);
@@ -6892,7 +9604,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
  *     int __Pyx_UpdateUnpickledDict(object, object, Py_ssize_t) except -1
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):             # <<<<<<<<<<<<<<
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
 */
 
   /* function exit code */
@@ -6912,8 +9624,8 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
  *     return __pyx_result
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):             # <<<<<<<<<<<<<<
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.num_grupos = __pyx_state[2]; __pyx_result.num_maestros = __pyx_state[3]; __pyx_result.num_materias = __pyx_state[4]; __pyx_result.ocupacion_grupos = __pyx_state[5]; __pyx_result.ocupacion_maestros = __pyx_state[6]
- *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 7)
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)
 */
 
 static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(struct __pyx_obj_9scheduler_SchedulerEngine *__pyx_v___pyx_result, PyObject *__pyx_v___pyx_state) {
@@ -6921,7 +9633,8 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   int __pyx_t_2;
-  int __pyx_t_3[5][13][100];
+  int __pyx_t_3[100][5];
+  int __pyx_t_4[5][14][100];
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
@@ -6930,8 +9643,8 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
   /* "(tree fragment)":12
  *     return __pyx_result
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.num_grupos = __pyx_state[2]; __pyx_result.num_maestros = __pyx_state[3]; __pyx_result.num_materias = __pyx_state[4]; __pyx_result.ocupacion_grupos = __pyx_state[5]; __pyx_result.ocupacion_maestros = __pyx_state[6]             # <<<<<<<<<<<<<<
- *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 7)
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]             # <<<<<<<<<<<<<<
+ *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)
 */
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -6945,43 +9658,48 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
   __pyx_v___pyx_result->hora_min = __pyx_t_2;
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 2, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 12, __pyx_L1_error)
+  if (unlikely((__Pyx_carray_from_py_int___5b_5_5d_(__pyx_t_1, __pyx_t_3, 100) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_v___pyx_result->num_grupos = __pyx_t_2;
+  memcpy(&(__pyx_v___pyx_result->horas_maestro_dia[0]), __pyx_t_3, sizeof(__pyx_v___pyx_result->horas_maestro_dia[0]) * (100));
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 3, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_v___pyx_result->num_maestros = __pyx_t_2;
+  __pyx_v___pyx_result->num_grupos = __pyx_t_2;
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 4, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_v___pyx_result->num_materias = __pyx_t_2;
+  __pyx_v___pyx_result->num_maestros = __pyx_t_2;
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 5, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (unlikely((__Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(__pyx_t_1, __pyx_t_3, 5) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  memcpy(&(__pyx_v___pyx_result->ocupacion_grupos[0]), __pyx_t_3, sizeof(__pyx_v___pyx_result->ocupacion_grupos[0]) * (5));
+  __pyx_v___pyx_result->num_materias = __pyx_t_2;
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 6, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (unlikely((__Pyx_carray_from_py_int___5b_13_5d__5b_100_5d_(__pyx_t_1, __pyx_t_3, 5) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
+  if (unlikely((__Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(__pyx_t_1, __pyx_t_4, 5) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  memcpy(&(__pyx_v___pyx_result->ocupacion_maestros[0]), __pyx_t_3, sizeof(__pyx_v___pyx_result->ocupacion_maestros[0]) * (5));
+  memcpy(&(__pyx_v___pyx_result->ocupacion_grupos[0]), __pyx_t_4, sizeof(__pyx_v___pyx_result->ocupacion_grupos[0]) * (5));
+  __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 7, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  if (unlikely((__Pyx_carray_from_py_int___5b_14_5d__5b_100_5d_(__pyx_t_1, __pyx_t_4, 5) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  memcpy(&(__pyx_v___pyx_result->ocupacion_maestros[0]), __pyx_t_4, sizeof(__pyx_v___pyx_result->ocupacion_maestros[0]) * (5));
 
   /* "(tree fragment)":13
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.num_grupos = __pyx_state[2]; __pyx_result.num_maestros = __pyx_state[3]; __pyx_result.num_materias = __pyx_state[4]; __pyx_result.ocupacion_grupos = __pyx_state[5]; __pyx_result.ocupacion_maestros = __pyx_state[6]
- *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 7)             # <<<<<<<<<<<<<<
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)             # <<<<<<<<<<<<<<
 */
-  __pyx_t_2 = __Pyx_UpdateUnpickledDict(((PyObject *)__pyx_v___pyx_result), __pyx_v___pyx_state, 7); if (unlikely(__pyx_t_2 == ((int)-1))) __PYX_ERR(1, 13, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_UpdateUnpickledDict(((PyObject *)__pyx_v___pyx_result), __pyx_v___pyx_state, 8); if (unlikely(__pyx_t_2 == ((int)-1))) __PYX_ERR(1, 13, __pyx_L1_error)
 
   /* "(tree fragment)":11
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
  *     return __pyx_result
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):             # <<<<<<<<<<<<<<
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.num_grupos = __pyx_state[2]; __pyx_result.num_maestros = __pyx_state[3]; __pyx_result.num_materias = __pyx_state[4]; __pyx_result.ocupacion_grupos = __pyx_state[5]; __pyx_result.ocupacion_maestros = __pyx_state[6]
- *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 7)
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)
 */
 
   /* function exit code */
@@ -7182,22 +9900,20 @@ static int __Pyx_modinit_type_init_code(__pyx_mstatetype *__pyx_mstate) {
   __pyx_vtabptr_9scheduler_SchedulerEngine = &__pyx_vtable_9scheduler_SchedulerEngine;
   __pyx_vtable_9scheduler_SchedulerEngine.validar_disponibilidad_maestro = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_maestro;
   __pyx_vtable_9scheduler_SchedulerEngine.validar_disponibilidad_grupo = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_validar_disponibilidad_grupo;
-  __pyx_vtable_9scheduler_SchedulerEngine.contar_horas_seguidas = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_contar_horas_seguidas;
-  __pyx_vtable_9scheduler_SchedulerEngine.contar_horas_libres = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_contar_horas_libres;
-  __pyx_vtable_9scheduler_SchedulerEngine.validar_restricciones = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_validar_restricciones;
+  __pyx_vtable_9scheduler_SchedulerEngine.contar_horas_grupo_dia = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int))__pyx_f_9scheduler_15SchedulerEngine_contar_horas_grupo_dia;
+  __pyx_vtable_9scheduler_SchedulerEngine.obtener_siguiente_hora_libre = (int (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int))__pyx_f_9scheduler_15SchedulerEngine_obtener_siguiente_hora_libre;
   __pyx_vtable_9scheduler_SchedulerEngine.marcar_ocupado = (void (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado;
-  __pyx_vtable_9scheduler_SchedulerEngine.desmarcar_ocupado = (void (*)(struct __pyx_obj_9scheduler_SchedulerEngine *, int, int, int, int, int))__pyx_f_9scheduler_15SchedulerEngine_desmarcar_ocupado;
   __pyx_vtable_9scheduler_SchedulerEngine.generar_horario = (PyObject *(*)(struct __pyx_obj_9scheduler_SchedulerEngine *, PyObject *, PyObject *, PyObject *, int __pyx_skip_dispatch))__pyx_f_9scheduler_15SchedulerEngine_generar_horario;
   #if CYTHON_USE_TYPE_SPECS
-  __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_9scheduler_SchedulerEngine_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine)) __PYX_ERR(0, 19, __pyx_L1_error)
-  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_9scheduler_SchedulerEngine_spec, __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
+  __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine = (PyTypeObject *) __Pyx_PyType_FromModuleAndSpec(__pyx_m, &__pyx_type_9scheduler_SchedulerEngine_spec, NULL); if (unlikely(!__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine)) __PYX_ERR(0, 24, __pyx_L1_error)
+  if (__Pyx_fix_up_extension_type_from_spec(&__pyx_type_9scheduler_SchedulerEngine_spec, __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
   #else
   __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine = &__pyx_type_9scheduler_SchedulerEngine;
   #endif
   #if !CYTHON_COMPILING_IN_LIMITED_API
   #endif
   #if !CYTHON_USE_TYPE_SPECS
-  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
+  if (__Pyx_PyType_Ready(__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
   #endif
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount((PyObject*)__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine);
@@ -7209,7 +9925,7 @@ static int __Pyx_modinit_type_init_code(__pyx_mstatetype *__pyx_mstate) {
   #endif
   #if CYTHON_UPDATE_DESCRIPTOR_DOC
   {
-    PyObject *wrapper = PyObject_GetAttrString((PyObject *)__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine, "__init__"); if (unlikely(!wrapper)) __PYX_ERR(0, 19, __pyx_L1_error)
+    PyObject *wrapper = PyObject_GetAttrString((PyObject *)__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine, "__init__"); if (unlikely(!wrapper)) __PYX_ERR(0, 24, __pyx_L1_error)
     if (__Pyx_IS_TYPE(wrapper, &PyWrapperDescr_Type)) {
       __pyx_wrapperbase_9scheduler_15SchedulerEngine___init__ = *((PyWrapperDescrObject *)wrapper)->d_base;
       __pyx_wrapperbase_9scheduler_15SchedulerEngine___init__.doc = __pyx_doc_9scheduler_15SchedulerEngine___init__;
@@ -7217,10 +9933,10 @@ static int __Pyx_modinit_type_init_code(__pyx_mstatetype *__pyx_mstate) {
     }
   }
   #endif
-  if (__Pyx_SetVtable(__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine, __pyx_vtabptr_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
-  if (__Pyx_MergeVtables(__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
-  if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_SchedulerEngine, (PyObject *) __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject *) __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 19, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine, __pyx_vtabptr_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
+  if (__Pyx_MergeVtables(__pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_mstate_global->__pyx_n_u_SchedulerEngine, (PyObject *) __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject *) __pyx_mstate->__pyx_ptype_9scheduler_SchedulerEngine) < (0)) __PYX_ERR(0, 24, __pyx_L1_error)
   __Pyx_RefNannyFinishContext();
   return 0;
   __pyx_L1_error:;
@@ -7526,7 +10242,7 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
  * from libc.time cimport time
  * import random             # <<<<<<<<<<<<<<
  * 
- * # Estructura para representar una asignacin
+ * # Constantes
 */
   __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_random, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 7, __pyx_L1_error)
   __pyx_t_2 = __pyx_t_1;
@@ -7534,19 +10250,19 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_random, __pyx_t_2) < (0)) __PYX_ERR(0, 7, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "scheduler.pyx":131
- *             self.ocupacion_grupos[dia][hora - 7][grupo_id] = 0
+  /* "scheduler.pyx":109
+ *             self.horas_maestro_dia[maestro_id][dia] += duracion
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):             # <<<<<<<<<<<<<<
  *         """
- *         Genera el horario completo usando backtracking
+ *         Genera el horario completo distribuyendo materias de forma inteligente:
 */
-  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_9scheduler_15SchedulerEngine_3generar_horario, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_SchedulerEngine_generar_horario, NULL, __pyx_mstate_global->__pyx_n_u_scheduler, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 131, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_9scheduler_15SchedulerEngine_3generar_horario, __Pyx_CYFUNCTION_CCLASS, __pyx_mstate_global->__pyx_n_u_SchedulerEngine_generar_horario, NULL, __pyx_mstate_global->__pyx_n_u_scheduler, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[0])); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   #if CYTHON_COMPILING_IN_CPYTHON && PY_VERSION_HEX >= 0x030E0000
   PyUnstable_Object_EnableDeferredRefcount(__pyx_t_2);
   #endif
-  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_9scheduler_SchedulerEngine, __pyx_mstate_global->__pyx_n_u_generar_horario, __pyx_t_2) < (0)) __PYX_ERR(0, 131, __pyx_L1_error)
+  if (__Pyx_SetItemOnTypeDict(__pyx_mstate_global->__pyx_ptype_9scheduler_SchedulerEngine, __pyx_mstate_global->__pyx_n_u_generar_horario, __pyx_t_2) < (0)) __PYX_ERR(0, 109, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "(tree fragment)":1
@@ -7564,7 +10280,7 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
 
   /* "(tree fragment)":16
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -7581,7 +10297,7 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
  *     int __Pyx_UpdateUnpickledDict(object, object, Py_ssize_t) except -1
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):             # <<<<<<<<<<<<<<
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xb04e2c4, 0x3ee2048, 0xd244c2b, b'hora_max, hora_min, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
 */
   __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_9scheduler_1__pyx_unpickle_SchedulerEngine, 0, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine, NULL, __pyx_mstate_global->__pyx_n_u_scheduler, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 4, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
@@ -7640,6 +10356,8 @@ static int __Pyx_InitCachedBuiltins(__pyx_mstatetype *__pyx_mstate) {
   __pyx_builtin_enumerate = __Pyx_GetBuiltinName(__pyx_mstate->__pyx_n_u_enumerate); if (!__pyx_builtin_enumerate) __PYX_ERR(1, 86, __pyx_L1_error)
 
   /* Cached unbound methods */
+  __pyx_mstate->__pyx_umethod_PyDict_Type_get.type = (PyObject*)&PyDict_Type;
+  __pyx_mstate->__pyx_umethod_PyDict_Type_get.method_name = &__pyx_mstate->__pyx_n_u_get;
   __pyx_mstate->__pyx_umethod_PyDict_Type_items.type = (PyObject*)&PyDict_Type;
   __pyx_mstate->__pyx_umethod_PyDict_Type_items.method_name = &__pyx_mstate->__pyx_n_u_items;
   __pyx_mstate->__pyx_umethod_PyDict_Type_pop.type = (PyObject*)&PyDict_Type;
@@ -7657,19 +10375,53 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   __Pyx_RefNannySetupContext("__Pyx_InitCachedConstants", 0);
 
+  /* "scheduler.pyx":286
+ *             bloques_por_dia = []
+ *             for dia in range(DIAS_SEMANA):
+ *                 bloques_por_dia.append(sesiones_por_dia[dia][:])             # <<<<<<<<<<<<<<
+ * 
+ *             # Ahora asignar las sesiones (bloques continuos) por da
+*/
+  __pyx_mstate_global->__pyx_slice[0] = PySlice_New(Py_None, Py_None, Py_None); if (unlikely(!__pyx_mstate_global->__pyx_slice[0])) __PYX_ERR(0, 286, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_mstate_global->__pyx_slice[0]);
+  __Pyx_GIVEREF(__pyx_mstate_global->__pyx_slice[0]);
+
+  /* "scheduler.pyx":306
+ *                     maestro_id = maestro['id']
+ *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
+ *                     horas_max_maestro = maestro.get('horas_max_dia', 8)             # <<<<<<<<<<<<<<
+ * 
+ *                     # Verificar si el maestro puede dar clase este da
+*/
+  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_horas_max_dia, __pyx_mstate_global->__pyx_int_8); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(0, 306, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[0]);
+  __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[0]);
+
   /* "(tree fragment)":11
  *         use_setstate = True
  *     else:
  *         use_setstate = ('False',)             # <<<<<<<<<<<<<<
  *     if use_setstate:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xb04e2c4, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
 */
-  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(1, __pyx_mstate_global->__pyx_n_u_False); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(1, 11, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[0]);
-  __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[0]);
+  __pyx_mstate_global->__pyx_tuple[1] = PyTuple_Pack(1, __pyx_mstate_global->__pyx_n_u_False); if (unlikely(!__pyx_mstate_global->__pyx_tuple[1])) __PYX_ERR(1, 11, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[1]);
+  __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[1]);
   #if CYTHON_IMMORTAL_CONSTANTS
   {
     PyObject **table = __pyx_mstate->__pyx_tuple;
+    for (Py_ssize_t i=0; i<2; ++i) {
+      #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
+      Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
+      #else
+      Py_SET_REFCNT(table[i], _Py_IMMORTAL_INITIAL_REFCNT);
+      #endif
+    }
+  }
+  #endif
+  #if CYTHON_IMMORTAL_CONSTANTS
+  {
+    PyObject **table = __pyx_mstate->__pyx_slice;
     for (Py_ssize_t i=0; i<1; ++i) {
       #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
       Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
@@ -7690,39 +10442,39 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 9; } index[] = {{1},{179},{8},{7},{6},{2},{9},{13},{14},{5},{20},{15},{33},{35},{31},{18},{18},{10},{8},{5},{9},{8},{15},{12},{8},{6},{11},{8},{11},{8},{8},{15},{2},{13},{5},{10},{8},{13},{8},{10},{8},{13},{10},{8},{7},{3},{14},{12},{11},{10},{30},{14},{12},{6},{10},{17},{13},{9},{4},{12},{10},{12},{19},{5},{8},{6},{12},{6},{290},{11},{120},{57}};
-    #if (CYTHON_COMPRESS_STRINGS) == 3 && __PYX_LIMITED_VERSION_HEX >= 0x030e0000 /* compression: zstd (909 bytes) */
-const char* const cstring = "(\265/\375`|\004\035\034\000\226\261\250; \223s\000\234\002Q\026AM\020\265\030\246\014F\355!\0344{H\256Dd\267\2554S\351FIB\366\024\337~\000J\264\"s\317\254\" \000\246\237K\271\252[W\246I\263\246\003\214\000\212\000\241\000\326\252|7\222\241\216e\224\232\215\246\032\037$\275\227u\332\323\270\213\345\177\020v5\366~\207\331z\336U\275\006\357\313\357\340\335\375\210\275\232\021\313\330\346\020\357\273\303\234oF\335\257k~\331\326\227V\303]\275\377\\\311\320V\277\230\252\322O\263\355\232\361\0061\t\253_X\365k}\301\016F\352\252w\3679?V/\337\312*ay\320\270\320\324<\376\356\360\270u\265\201\277\357\3700\014\276W5\2569\224m[K\335W\266\353\357pf%w\357<\250\323aZ&7H\352\037g\244\326\351h!\315Z\236\237\335l\255\265\241\276x\374\235\261\035\267\376;\323\263\337\330jl=\254\037\324\265;\013q\2073\316\370\263w_\317j\017\333\220F\216\326v\231\374\254\235\221\371=ko\276\263\327\366bO\247\273\260\357\356\270m\306\026\354\364&\3031\354T!\356\262M\337\020\2072;\336\361\363\307\366\335z\277\266\266\263\337\215\326\252>\343Xv\261\371\276f\327~\306\356\016\273j6\232\250\310?4\272\210\226\370\306\305F\252\267\370\212s\244\372\013\227\222\221\262\316\024\352\"\345q\026nrZ\324\234\t7\242(\234\243v\024\252\371\345\252\232\023\t\271\202\"p7h\013%y\351DM\324.\232\024\022\335\304E\\\344\2041' &$\372\312\2148\365\325Y`B4\210&\005C\027q\330\211\341\220>\230P\334\3043\316\212\204n2\t\312\004\203.\2262\267\003\002\000\201!\323YA\000p\032j\001\351'\301\273\363\232\364h\244\265[\377\326\367{\357\003_kkkog\241\227\357\010^R\204\005\253[\301\250\333\324\2443A\256\220\324\204\256L\222\262g\305Q\\\343\\)\027F\275\346\225\352\004\235\340\nP\220\232\212&\305(\227\273B<A28\234\021\nRJK\244.\212\314\023)'\226\017\244\216*\025H\375e2\230.%\316m\007h`\324\357\331a\276\224\253\022\346f0\352?>\251\217-\265}\351\007Ka6\351\026*\005\271p>\234\305\013N\227\031Q\336\334\020\002\000HC\"\240\026\372\215\272\010H\274\225H9\210\323.O\r\251\222\026\t\ng\302\271\240\254\213{\341b\350\310\000\272\332\320\350\227\277\270\207F""\027\005g( \206@fE\017\021=\206\021QP\220X\332\016\333  \303\r\026@m\3162\216zf\320xrk\226((\274\177f_\254\000\302\0273\224\237\241\251\341\031\025\350l\303\002\033\200\003\036j\260\323vE\327\020\020\025\n\nL(\213\2730\245\263\276!\242\014q\205\2052;\213]\t\376g\211\246H\211z\324\223\356\272X\350\204\300i\n,\000qpC\302N\203?\260\376\340\261D\246O<b\005\0001Os\241x\214\330\273\242\240\210\016DI1*aED)@\352\371Y\317\021\3169!8\206y\345M\036j\0366\274\215\001\261@\213\300\003q\321I\n\300\2309\034\316\007\241\326\r*C\370\030e\220!\022\231/\356\351_jb=\206Z\313\363$M0\025\341>E\270\240\346\010\315P\017";
-    PyObject *data = __Pyx_DecompressString(cstring, 909, 3);
+    const struct { const unsigned int length: 11; } index[] = {{1},{179},{8},{7},{6},{2},{9},{13},{14},{5},{20},{15},{33},{35},{31},{6},{18},{17},{18},{10},{16},{8},{5},{9},{8},{15},{3},{12},{8},{6},{11},{8},{11},{8},{8},{5},{13},{15},{2},{13},{5},{10},{8},{13},{8},{10},{8},{13},{12},{10},{8},{7},{3},{14},{12},{11},{10},{30},{14},{12},{6},{10},{17},{13},{9},{4},{12},{10},{12},{19},{7},{5},{8},{6},{12},{6},{1401},{11},{140},{57}};
+    #if (CYTHON_COMPRESS_STRINGS) == 3 && __PYX_LIMITED_VERSION_HEX >= 0x030e0000 /* compression: zstd (1701 bytes) */
+const char* const cstring = "(\265/\375`6\t\3354\000zR\334\021:\360\0327\314\300l\000\2222\3101B\243\303j\302\334\324 \23707\205\265\"@\266$\245W\210V\244#V\322\256\201H\310+\002%\200\005)I\000\340\257#\207J\240\250\n\022\037\376\000\013\001\024\001\245\211\367T\006\232\247y\232=\234\325\\\342]\232\030\r\256B\214y\347\332\303\030\270\236\2724O4\210w>3Po\234\315\022\212\227w\232\227\205*>M\014\324\252\251j\037\306x\253+*Dy%\250\311;\251v.O\035\014f\324D\235\260\360\324\276\2151\017k\236\020\343\022}\232\2763'\324\323A\352\224\366\3016ST@\030\313h\236pE7\314\024U\260D\250\177k\251\235x\273\334&\317wj\375\333\345m\226\032\227e.\321\373\227ot\224)4\313\321\303w\232\370DM5\253\350yf\217Q\325{<\265\223\272spD\325\261\324\372\034W\224j\354\345\214%[\007\251\324\3614\325\237\271\356\306\036:n\275w\376\361v\353\036\267\312\323OZ8\226g\036o,7\022\240\034\320x\n\265\3123\205\352\036\251~Z\315B\2753\177\272\034\2679\236\250\223JU3\252\331I\035\265\212\372\314\004=\240'\000\304\272\330\201\276\221`\3433\374Ak\3239\022\000h\026\264\t\332K\266\263\326\243g0\274\257D\355%]\t\237\333\222\332\373\032\226\370\231\267\325\336\014\301_<e#honu-\211\304\317\261\017\263\207\242\316\210[0\2746\216\300\316:\207\354}\265 \t:\216\343+\033!{ul\216O[\023\212O\362\017\266A\366\222\334\207+\301M}\201W\352\270\276\301\360\246\376\242}\265\037\264W\327}\374\205u`x3W`\031d\257\315}\021\371d[v)\216!{Sv\207K\026{S>\356\362\317\077\077\210\210\272:W\303u\001\371\302N\302)\014\000\010\272^}$c\357\254g\030\000lt\341\266\266^\1779J\357\265\014\256\030\253\372\327\353\255N{\347\236.{?\2751\236\322\030\210\226g\026\376\362\232\356\262\032\245\177P<3x\256\352o\335Z\010\\7\024/\210\0061\226\322\300|bt\357l\236&\326\031\270\3616q\356\000I\033RQ\324y\024\237\202\361\271j\341\001s#\322\"\231\26653&\237\243\365\371\361\213\237r\014ZC\233\353\266\016d#,*^\235\367\371\017\227\303\375\030j\373\346\267\231k\363)\032\277\210[\314\334\026\220\377j\205V^\300k\264\267\211\3513\r\375!\241/D\363KW\346\343\357\372C\177\365\230\202X\321\326\212\264\035""\265\027\347\317N\344q3\334\025?\021A+\276\374\311F\352\222x\224\2157{\032\357\020\3235\322\236\373C\317\361\212\032\255W\2615\\;2\2768\327\346\002\333\222\021\346\205\2608F\305K\022aD\241!n\210\345o\376\007\205S\324\310N\304\007\270\304\003\351\302\\\226\214\237A\243\355z\007\304\207`(\216,1|a\372\323\340\0176\375\246\244\237\204\364\221p>\307p6\304\231\374[K\266!D\035\021\205H\022uX\376\316#\265\2706\003$\342\363zJo\350\302\007\236ci<\363\024Nr\242\264\007u\215\261\303\272PE\256]\373-6.\004\201W(\350\373\014mP>_a\257>\372\014\353 \360\006\351>\324\360\305E\360'\343\027(\0263Qj\270\343\032\371\223\205\277\020{\323\027\257\305\212)\033\021{I\266!F\3439\326\210+j\253@`\204\337\2606\026\207K&\360\302\214`EE\260 X\320K\013\000\240+\253\352WA}(\337\367\035\375\243\241\2175\274\rk\020\272\r\247`\207\270\024\006\000b]\257-\234\357\t\274\257\255\224k!V$\273FN{A\037iE\035\320\217\031jW\307\313\332\264/$!\375\036\342:Lrq.\014\320W!^\271\331\225\301\370\267\026\245\275\232yakv\232\216E\022gD(W\347\306\210|\265{dt\253\276\242\033\346n\277\200H\367y\304\024b\0001\035\342\244|\322\227\255T\367x\265\021\235T\375\312\305\277\240\025%\004\374\256E\352(\375\n\327\312:O\321\211\205\360\252\026\037\311^\362\013\234+\260\342\3613\303\2339FB\221\\\3628\177\253xmCr\270\335\240\201\005\250\341\244b\016\231\241\021\031\221$I\n\035!\010BrNb\316\007QI\006\311\214\024$)dc\014]\0256\r\022\332\303\030\177\3014\265X\271nL\307\317I*\241VQ0Y9\345|\240!\230\334X\202\332\360\272\273;\007]\314\264\256\021\303\315\"O\034\271H\230\231\302\035}V\316%\373\231e'\346a\217(3\375~\002N\251'\251\310\246\367\216Z\345I\025\207\203\031+\246\340\032-Y\205hcs\230\002yR\317\017{`N\253\031J-y\302H\227\313TP\277\231\325\r\021w\264\333m\251;\260o\212\212\305\222xe\341\223\303l\317{\2008\374(8\304_\021[\256\316\027\206s\026\"\005m{\t\032\221@\235.\233+\n\213\007\305S\324\362\031uN\227]\211\006\365\334k\367Q&!@H\333\022\357\332{\303\360\017\233\002h\315\232\252\354\375\352`\035\230\306&TAJ\336\200x\\>\025\306\225UrL""\272\t\301F91({\005E\3277\033\333\275\357$)5\r]\360v2)\207\235i\">qaL\001{\360b\356\301\026\364\2272\355\3527\030\332\007\324i\r\346\241\316YHl\367\242G\003\336\212;\032\225q\330&\361\354\002WM+\002\025\360\237\3531\223r\321\376\260Z+\n\316Q\306\036}\206\205d\373i\362k*\177\310\333\326]+G(\314\025\362\023{\367\230\3273\300\245\357\200\013\203H\203~R\251\257\315\336'\004\307\347\216\3602\232\217\001&/H\014v\027\240a\214\005\260mb\243+G\312\037hS\366\016\236\036M\311\244\037\333\t\312\351\262Z\332\203\203\232\342\0071\315\224*\342\313\337\344y&\23159\267\225\216\022\340K\033\254\023;^\211\013\205:%\177\312\214\325\002~\375\327\005~,Xa\221\236>\324\243\202\247\357\312\001\r\313\357!k#2\035Ea\036VB\337\356\354v\311\233/!g\322\016K\265\326\341\241\345!\300D3)DN-OAG%\364\311\177";
+    PyObject *data = __Pyx_DecompressString(cstring, 1701, 3);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1006 bytes) */
-const char* const cstring = "BZh91AY&SY\024R\267\227\000\000}\177\377\347\357\377\356\377\357\367\357\277\251|\200\277\377\377\347@@@@@@@@@@@@@\000@\000P\003>\332\356\232%mg\0345G\251\252b=#\322\0322\006\324\014\200= z\232cP\003C@\032\031\242i\352mOD\375H\332O\325\003D\t\242zh\232m\tOh\236\250\332COP\006F\200\000\000\000\000\001\246\233Pi\352\r\002hB&\243\324{T\336\251\371Q\352\006\232\000\036\241\352\r\000\000\000\000\003F\232\014\324\007\000\r4\320\000d\000\0004\000\0004\000\000\310\000\006\206\200\r\004$\201\372\"d= \000\003@\000\000\000\000\000\000\000\032\003\2330\310\rP^\376\336\211\360\223\317\360\027\351\260Q\177\002\017%F\206\221\233D\367P\375\310s)h\320(\212m\t\r\256U\215\016\225)\215\262\306\306\213\313\307}\203v\246\"\261C\230\027\227{)\351\256\246\310\226;\333\317pW<\303[R\013\206|\303\355hj\024\010\027\321v\327\217#-D\361\311\2312\313\030\001\272\252\\\302\032\377[b\3374\210\037:.\201\032\347\366\253.\034%\214\355k#\345\004\350\303[\370\010\232s\243\275\327\\\241\301\224\317yC[\232:\030{tc\002\007\2210\357v4\3672]a\ni\237\221s\350d\240e\362\323\352v\0251\010\005\001\254\356\264\231\000\272>\307\3113\n\nDhP\030#\273\010\t\000Cg\203\027\313A\031\3176\266\264\334\004\345S\234\320i\252\303\200\240\031^\tJ\001h\274\025\217\223\000\200\344\250\010H\332H\003\262\t\241\232\032DO\362dh\2616\374U|\234\341\227\3503)~\2402I\252`Jg\017\340\203`O\210\310\034\204\224\212\223vc\270[\331\335@Ou\240S&\335W\344\003\335k\2207\243+\245W\007\225\320\002\001@\222.&+'^\007\327p\262a4!a\221Wd\356q\234{\203\271N\323g\003\003\300+\031\231\253\244\253\327\25240\020\"\222\356\366H\260\241\242\200\342\222\2540\220)\n\253bh\213\356\255\210\252\317\210\024\031@G\027\356\031\346q\254c\256x\326\274F\222\006\352S\244\036V\000\014\026\005M\2260\232c1:a\266\260\271b*\234\344\324B\362\204\215\323\262)\324\r\216\310\264*\225\232\0131\213\246\254\003\"\235\201h%\030\321\227\026\021MP\006\252\216N\202\n\351\024#35P}\034/\036<\004\201`6\203i\360\210\030\013\2628\342\2400UJ \344Oq\0041\004X\004I\006\353\216\375*\024\336""\205\241\306\221\030\253@R\356c\255\235\201z\213`\002\254dSD@M\243`R0\372\206\007\211I\002\210\2202\220\\eT\326\0334\n\3613K'\013\205\352\330<\305\345\002\371\323;R\250L\230\360\340e#\315\204\200\353\234\222\321,k\004\241\013\032-\215H\236\303R#90\004'\230p\026\220\222\220\246,2B\t\220\202Tvfw\365\242\300\035\225\000\004\270\356\324\2741\024\2171\004`^D\351@ \3019\023k>\234E\236\2605\030`\265p=\027\337\376\260g\177\234\275\036_Zy\274\324n\266\372=\221\316\207\033\r\3725r\206}\201R\253\251r\325\371\035\362*Fx\366\277\0328\244z\326\205\270\230\004\273\356\017\032\310N\340\343\326\260\313\341T\323f\216\377m\221\010NJ\352Va\352\265I\216\351\271Y<3\007\230F@ci4N\004\366\022S\327\216\265:\363X^\204]yR]\376v\361h\322\301D4$\211C\003\221\024\250&W \232\205\211\241\257Q\026lp\233t\225D\250\211\377\305\334\221N\024$\005\024\255\345\300";
-    PyObject *data = __Pyx_DecompressString(cstring, 1006, 2);
+    #elif (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1731 bytes) */
+const char* const cstring = "BZh91AY&SY\377\367\304\227\000\001Y\177\377\377\377\377\377\377\377\376\377\277\277\377\377\277\377\377\377\300@@@@@@@@@@@@\000@\000P\005\336\005\334\243\262\014T\245\300\016\006\246I\r\t=LF\rO\032\211\340\324cQ\032i\344jdx\204\362z\240bz\217S&M\033$\362\217L\220z\236\243L\304ji\345\003B\0044&\020\3121OL\232\232h\000\032\000\320\000\000\000\000\000\000\001\240\000\001\251\200\246\246\223OTz\215\000\036\243\324\000\000\032\032\000\003\002\000\001\246C&@\321\240\003CA\242\014\000\023\000\00410L\000\001\030\0012`\2310\000##\023\021\200\206\000\000\022\232\215\023M@&\2314\311\222O\n=G\251\246\200\000h\000\000\000\000\000\000\320\003CM\224\323jr5\264\r\364A2FT3H\366\306\\\376\207\371\321\016#\216\017\321\204\221\322\3513\330Y5\037c\334rD\232\317vs\233\364\306\344Tj_\351\227\343\221\201\266Y\331\353\206\223kj&I\252\304\255\264\245&0\371\036v3\033F\213y\013/\"\267RI$\303\241\271Aku\001p\013\355\207)\255'\302\323J\023\273l\245\274\032\326c\274\030\0232HI\004\21440\014o\306&\321\2557P\223\337W\320Yt\205Y\256! \n \340b\222x\223\\ >\031l8e\255F\022\013\256Q_nc[\010\326N\3315\3435MT7\025\311\n\332\345\231\313\261\366\265)KimaK\252\013\216\260\022mZ\270\354\344>\304{\213\212\262L,\354\013v\335-j\320\033\250b[jJ\311\007#\343\231\264j\005\315W2v\210\325X\236\266\232\037]hF\330\362A\232\216\313\212Y\226[\003\367K*\2469\246\014\265+\030f\307\225\016\0266Q\024\006\260\226\324Q\210|\013\332e\2668\3622\013\021\344\311#e,\335f\3143\375U0\341\212\3509\230\245Y\nZ!\240\323\225\204T\270}c\270~o-\272\370\021\0029\363\256\242\270\235I\270\347F\352\232\327\242\211_\331\315\317\255MU\326q9.\344X\240\204@Y\004\242\221\217E\255\200\315\024\206\211\233:2\363 \327D\326\216V^I\tC[\rK\177M$\303\314bI}(\016<\366\353\250\313\026\343\233\263\"\204\000\302\347'\207\303\033\020\"\020\224\325J\224\247F\233}\363\363]\034~6_\2606\246\370$\022v7\260\225\246\023\374\226b\362\323\303Q\301\006\310Vi\257\334\371\235\365\371\304\351I\017\232\037\207\346d\033g\206\r\262\206^1\001\240\020Ow\230L\2776?\224>o\346q""\000\036\r6\225\226h\215\\VP\nH\200\322\224\010Ch8\301U\217\001\302\240:\024\304\205\004\254`9)L\310\214\242\177r\221\033AYo\265\303\340k)\010\372\034\343\216n\335\t\234\273\234\335x\005\306L\262\3616[S\\\232aT#\023b&\333r\267\233r1\347\250\017\006\346-\350i\3301j\005\222\312*K.*\004ui\341aN\347\2358^\263P\215N\016D/a\265\345\261\031\266z\346\307g\024\344\207\266\022(\242\306\322f\313x\313\233E\355U2-\325\252+Jy\2069\310\213\244\224g\nh\342\301e\\$\315H\365\373\020\214\252\366\020\025\220\245\335\004\213F\264\275\241\301\350Y8\216\2635\3356U\t$M\016\257\347f\274\351\2447\273\t\327\023/\256\023\013!\237Im\256\351C\365\234\256\000\014\025\246\277@\360\36615UH\014\314R\301_\301\201\216\204\013R=X\304\036\261\024\026\356:u\203lxX\2135\326x\021e]\314\313\013,T_\000\310\216\231\342\rQ0bE\3365\334\250OC\001\251\313Q\006\234\tg\323*=`\311%\002'g\236\226\363e5A\263(\212\213\270a5T\365E\024\030\330\341\327\256\245\351PS\210\2024!\001Pr\201\311\210\351\251c=Ls\266\023\200\325\005\0201\355\356\270\334Q\315\332\356i\325\237Q\326\266\2719k/\002\220\235\224\n3\306Pu\251\233\t\2245br,#\036\323\230\214\320\220XPMB;\315[\327x\356\316\231\240\033oR\341$J\\xD\327\224\030\3412\200\234\342\211\037\201k\242\024\001\222\207\"\0249\312$\007\224\324\263n1\340\335!\214\305\tr\321\026l.\242\314\226\002\302\001\201\027\203q\212\344\036\333&YV\"\354E\326v3\2324_\321S@_\337\340\210\017\201o\360_6\332\346$a\r\234\033\214\252\014\ni5\265\205\234\246@\322\214\311\252\276_,p14\301eP0\034\347>\004B\275G\353)E\205\254?\2328\3707\210\253/\354\340\342\004DE2\270\326\275\364@\343\245\361\365\037\212\250\247Lt\020\244\0062\014\310\007gP\213TO\376o\363\315\261\265\362\355\214\360vI\006\215`*\244\2062\340Y,sG\t{\346\276:Y\225. \265\024)\\D\222<\244\277$\006\235\0047I\371z\356\273\252\013\313$B\204\244*0\264\253m^i\200*\026\347 s\037G\225\314\201\025\262\033\220\277\317\244\324\342\357\241\200ipq\212%;\226\320d\226\r5\353\353\325\214Y\265,'\270^\031d3\254QH\316\356\266\277\273\232\250\n\036q\005w\230\350/:""\007\214\220\230\321HY`\365\342\007\350\215\266a9\257\020\272\341\034mm\301\260\271\206\220\177%\303O-2\340t\222\340\302\367\316\005\t\002d4\202\203\002\030\324\005u/\013Cd\025\237Mnq\337.On\036fd\247K\243\301\017*tOA\365\344\277/\336\230H\352[u\342\316?\247\222K3>?\341\340Y\220\371\211\333\217\255\013\322\006\312\336d3\036K\340\313\235\267\242f\237\327V\036\222\257~\024m\234]\311x\\\216\360\241\341\320e\230\366rv%O\016}\321\364\035\272\321\177\2141\"\216\245\031\321\234\336<G\003\005N\362\263Z\306\317\275\225B|\017$b\265\253|\242\364\213\231\023\272\337\247\324^\265\307\301c\025\243a\227\332x\tV\3514\250LN\216\255%Q\341p\301$\373\350&\025L\326h#\026\021\236,\232\005\207Z\032u\220\315\201\223\2331\243\007V4\221\021\007#3W#5pL\333\000\245\020\022\300\316yZ\234\336\337\232\230\\\362\322L\242\025(C\202V_\370\273\222)\302\204\207\377\276$\270";
+    PyObject *data = __Pyx_DecompressString(cstring, 1731, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (894 bytes) */
-const char* const cstring = "x\332uROo\032G\0247\022i\260\234\226\320&\r\226cuHIm+\t\r\025mR5mD\213\023U\221,cG\312q4\354\316\302\324\313,\354\314: \325\225\217\034\367\270\307=\316q\217\0349\372\270\3079\362\021\374\021\372\206\005+u\032i\367\2757\357\375\336\377\367\362\300\223\024\311\036\221\350\217\261\354y\0341\201l\352\262\016\365\211\244\356\030\t\3513KR\337\2008:\334?|\322x\336@\204\333\310\247\177QK\n$\202\216\345\022!\250@\236\203:\001s%\343H\216\007T\324\320\237\016\032{\001\342\224\332Hzh\000\270\017\035d\217r$\2504\002\332!\234{\222H\346q\014\356\214ww\220\315|H\302N\251\361~E\\Ak\304\2661\340\250\315\004\351\270\224rC\273\026\023\231d\013\253G\355\300\245~m0\036\2750\365\363\256\360\002\337\242\277-\002`|8\036\301\337\202\276\360\001\035\311#\352\034\257|\366y\227qz\355Y\303\330\207\267E\261\265\030\022\306\037\003\240\t\001\265\177\032\322\245\034f\352\343\236\007\224yD\214\271\305\274\232\345\371^\000\003\243\302r\201b\006\275\373\304\242\035b\235\330\214@\334>\341\004c\333T\2331\312\203\376b=\030;\001\2670\276\026\332(\226\305\340\256\037\014<\314\354\005\027\031\3056\221\304`\261\303\370\2023\316\240\226\205\330'\243\214g&\261,\300\245\202\331\230\t|U/\223\264/\372\204\302\200M\202\245\264\322dI0\204\203\206\200\302\005A3\006\266\220\304\212\257`\236\031\025\364\2079\351g\234\276\307x\340\r\200\300\266`\226\326\211\010\372\331\313\247\"pe&/\3734\2429\271L\n\370\200Y'\020\360\332\0222\353\2514wb\222\014\003\342f\t}\270h\257\177\265g\374\321\306\257\024t\004\313^\205\025\324u\026\273_\326\r\222M\035\262\250\356\352\"\360\377\\\307\322\"aX\030\007\003\230\002\r\3404W\270S\342\006T\2347/\313k\353\017\342\322\345gk\353\237O\336\204C}\353v\270\036\225\364\355\007\361\216*\251\n\030J\367\322\257\277\213;*\247\357|\023\rAqw3\332\210\353\272\274\025\325\365\375mPlnG\257\343\037UN\225\364}\200hd\334\266+qQ\005I3y;\335\232\265.rsTSD\211\244\242\321#\365\"\361\247\2459\3726\376Y\375\256l\320U\037\202K\245\0327\322\235_\247m]}\244\352\252\251\253{\246\0060f\037@\036\356\251b2\324\273\337""\253a\222\323\273OT[\021\275\273\227}\306^On\032\373OIw\332\236\222\017\204F\262?-M+F\003\257g\006\324H\232\306\3459\310U\010\230e\270[\016%4V\336\234\027\212\223\341yN\347M\022'i\236\347.\013k7\276\230\274\r\267\242V\274\241\032\352l\332\232\025/dz\334I;N\352\214\323\361Yz\366\217\316\337\232\274\016\353\341\253\350qLt\376\346\371\351\344]\270\037\335\211\332\272\360eX\321\205{\341p^(G9c\033\352B1->M\3620\250w\3237\263\367\027d\376_\r\2240\317\303TS\3644\331\230\3762;I\333G:\377U\3702\336U\025U7A\376\016\237E\020\267\236\224\322\037Z\263\203\364\350X\3477&\365\177\001:Q.\275";
-    PyObject *data = __Pyx_DecompressString(cstring, 894, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1679 bytes) */
+const char* const cstring = "x\332uTKw\023G\026\266\034{\254\014r\220@\306r\360\243\333\217\330\004l\220\2559f\206\000G`\207\223\3078\226m \220\204:\245\356\222\334c\251[\375\002\233\201\tK/{Y\313Z\366\262\226\275\324R\313Z\366R?\201\237\220[\335\262\207\220d\321U\267\353u\357\367\250\272\277cyD\361\016\261\247<<\361\016-S1\\E'-\243N\034\354\221\326\211\342z\216\241y\304\221\213Lew{w\265r\273\242`SW\034\362\037\242y\256\342\372u\255\205]\227\270\212\325P\352\276\321\362\014S\361N:\304]S\276i('\226\257\230\204\350\212g)\035X\367\341\006\357\220\230\212K<\031(\313\3304-\017{\206e\"\330n\230\315eE7\034Hb\274$r\367\327\270\345\2225\254\353\010\326\021\335pq\275E\210)\333\246f\270i\244\273\332!\321\375\026q\326:'\307_\311\372\315\246k\371\216F\356%\007 \264{r\014\337\026\340B;\344\330\333#\215\375\263=\333f\3230\311G\277k\0109\360\257\021\244%$!\364\307\005\000\302\205\332\377zI\223\230\300\251\203\016-h\r\013w:\304\324\261{bj\206\265\246Y\216\345\003m\304E(\341\0065\211gx\244-\177a\030\031@\211\2035R\307\332\221n`H\327\306&\206\310E\300C\3072\r\200\016\233u\t*\355\210\351\267\023\025\021j\370\246\206\320G\025@\00696(\0335\035\277c!COz7m\221\216=,\227\243\206a&\275a\032Po\022\266\361q\332\247Sn\322\310Q\310\216\323\237\264J(\314\320\221\341\242s\224\022\231\333\306\004\304\221)\007\321\331H\232\026\301Q\200\032Zp\037 \226\313\222\310=\353\223e\347?\206\016\360\333\226\244\034\010@&n\247=y\205P\307\352@\003\252\203&\332\221\353\267\323?\207\270~\313K\343\001\0132\224\326M#\337\354\030\332\021\034\370\221\230\351\354KO\372M&\261}\334J\023:p3\254\366\271_\320\037\234s>@\216\3014g\307\272\244\325H<4\250\033\"\2354pR\335\271\263\320\237\270\314=\364\033\r 8]\340A\200\220\337\001b\210\017N?[\376\022\267|\342\276\253\276_\034\372t\236\025\342\254*\033\205e\336\377m\350\323\253t\2259\342\332\277\242\205\250\026Y\275=\361\003\026\270.g\024j\307\331\334\351w\201\035\347\346\350+\246\207\252\270~'*\307\271|\360\031\305q\376rp\2076Y-.\256\204\231p\226\333q~\221U\331O|\214\333Qr\366\370\351\016U\343\334\245`""\205\252\342\352\315\320\346\203\341o\202Z\234\233\014|Z\2455\030\031\277\026f\342\334\022K\342Bp\201\226\343\374\014}\n\207\325\372\377\3172\001\263\205\211`[L\255\206\265\020\307\305\311\300\246\031z\005J\303q\251\314\013|\255\233\211Kk!\226\211\370T\244\306\245)y\242\304\0145\177x\354\007\305O\304\371y\266\034\026Bu\020\304\305\317\241\352\342\014\224V\034\032_b[\341\337\371<\337J \215/\262\004\377(\000\310K\330\260\355}vh\034\270b\237\260\n\363\303m\250\0030O\003\264}6\314 T\240[`{\314N\321\215\006\217\251J7(\006z\363\305`\233N@\350\260Kl\203iI\025\305I1y\r\242\371\260\032>\343uq\373\333\236\332[\357\325z\200\362\313P\r+\342f\265[\350.\211G\317\304\263\347\342\371\013\361\242#:\266\260\235$\201\310\203\262\022\350\317g\230nHF\022q\372\371+\342\312\027\254\016t\027\245\t\212\363b\376v4\034\251\260sb\212\216\322\307L\005\200\245\253t\035x\372\201W\370\333n\265\273\337\033\356\251\361\364\034}\013\025\355\363a\300\247\254\205\355\250\034Uc\345FX\225\233K\301kV\004:K\323t\233M0\314\354\2176,\260\273 \312e\376\200\343xq\235\257F6\210\265x\213g\372\240\343`\257$\364s\276\031\315G\337\367@I0\0043y5.}!\275\027B]\327\303r\0374\315J\036\307R\373H\203\334e\031\310Y\027+\367\"]<\330\027\373\007\342\000\270\371E\374\362\".\226\350\030\365A\363\3750#\256\3753*H[\314\320'ba\203\227\245\252QA\342\255P\027\264\232\0064\341\001(\270\022-E\200@\312\260\002\325OK\3075y-\236\236\221&\234\014\332\254\314\266\303KPSq\216\332\t{B\226\037\227fi+\255\025\350\226l\354\204K\342\346\375\004mB\310C\220B\222\026+j?\311k\237e\235\004!~\237uY\2628\223\322\353\321D\027\360\215\230\333\340\353\274\326\237\3762\\\205\2336\032\355EnW\355\226\343iP\263\302\253\374gp\207\372W\247\366\223\003\307\347\340\002\203\217\007$\306yy\301\261X\336\204\003G\242j\352\324\363\311Y\2523i\221\202B\177\005/y\034.\322\225\340PZ\270\017\026\376\236\345\000\017\310\370\206\255\263ga\235\217H\321\246\372\305Y1\273\311\275\304'0\233 \200Q\225M\312\213\023\027\227\331\253P\347\252\330x\324\265{\237\3646z\232\250\201r""\217\345\2032&\263\210\312v\267v\006\177\223\r\356\363\204\274\203p\336\177\331\274\244x\231y\342\372]x\274\216z\205\236\274=\301[\366\200\031\241\303\013I\2729\372&\\\017\317\217\251\210\271{\021\216\336\364\376!v\023\203\244g\016\246\276\212\252\321\363\256\337\3737\334\254\301\314\024\275\310\3540\307\277\215H\367\256\330\255\365\213\n\033\003a\300\225x\320$R'\221TL\376\312\215\013L\355g/\236\332\3572\361\210\364O\203W\337e\300\273\243\237\235\036\004W\351\026\273 \257\362\303n\245\373V\034\374(~l\212\346\2218z-^\377\357\375\320\320\257\231\275a\350\366\206\237\310\356\311\360\323\341x$w\372((\007_\323\033\220id\354\335\313\323\247\360z\024A\240\354\245@\215\263\360\034\366\263%\232\221s\360r_\024\027oI%\370\323\350\273\356\253\036\356\377~\004\312\352\217\200w\205r\213_\210\356t\217Dm/\036\271\034\334g+\211\177\341\2207\301&<\204YxY\305\372VwG\354\355\307#\027N\313\277\001\371'\023G";
+    PyObject *data = __Pyx_DecompressString(cstring, 1679, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (1404 bytes) */
-const char* const bytes = "?Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.add_notedisableenablegcisenabledscheduler.pyx<stringsource>False__Pyx_PyDict_NextRefSchedulerEngineSchedulerEngine.__reduce_cython__SchedulerEngine.__setstate_cython__SchedulerEngine.generar_horarioasyncio.coroutinescline_in_tracebackdia_semana__dict___dictenumerate__func__generar_horario__getstate__grupo_idgruposgrupos_datahora_finhora_iniciohora_maxhora_minhoras_semanalesid_is_coroutineitemsmaestro_idmaestrosmaestros_data__main__materia_idmateriasmaterias_data__module____name____new__pop__pyx_checksum__pyx_result__pyx_state__pyx_type__pyx_unpickle_SchedulerEngine__pyx_vtable____qualname__random__reduce____reduce_cython____reduce_ex__schedulerself__set_name__setdefault__setstate____setstate_cython__state__test__updateuse_setstatevalues\200A\360\030\000\t\"\240\021\360\006\000\t\r\210K\220q\330\014\020\220\t\230\021\330\020\"\240'\250\021\250!\360\006\000\021\027\320\026&\240b\250\001\330\024\037\230q\360\006\000\025\031\230\013\2401\330\030\033\2301\330\034\035\360\006\000\031\035\230G\2405\250\001\250\021\330\034\037\230q\330 !\360\006\000\035!\240\017\250u\260A\260T\270\033\300D\310\001\340 .\250a\250s\260!\330 +\250<\260r\270\021\340 #\2409\250B\250d\260!\330$%\360\006\000!$\2404\320'=\270Q\330$+\2501\250A\330$)\250\021\250!\330$%\330$%\330$%\360\006\000%)\250\017\260q\330(/\250q\260\001\330(-\250Q\250a\330()\330()\330()\360\006\000%1\260\007\260q\330(6\260g\270Q\270a\330(6\260g\270Q\270a\330(4\260E\270\021\270!\330(6\260a\330(7\260q\330(4\260A\360\006\000%8\260q\330$/\250q\330$%\360\006\000\025\030\220t\2301\330\030\031\340\010\017\210q\200\001\330\004-\250Q\250f\260A\200\001\360\010\000\005\016\210T\220\033\230D\240\013\2504\250}\270D\300\017\310t\320Sb\320bf\320fy\320y}\320}~\330\004\014\210G\2201\220F\230,\240a\330\004\007\200v\210W\220E\230\024\230Q\330\010\022\220!\330\010\027""\220q\340\010\030\230\001\330\004\007\200q\330\010\017\320\0170\260\004\260A\260W\270K\300w\310a\340\010\017\320\0170\260\004\260A\260W\270K\300q\200\001\340\004\037\230q\320 0\260\013\270;\300k\320QR\330\004\023\220?\240(\250!\2501\330\004\007\200|\2207\230!\330\0101\260\021\3202D\300N\320RS\330\004\013\2101";
+    #else /* compression: none (2614 bytes) */
+const char* const bytes = "?Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.add_notedisableenablegcisenabledscheduler.pyx<stringsource>False__Pyx_PyDict_NextRefSchedulerEngineSchedulerEngine.__reduce_cython__SchedulerEngine.__setstate_cython__SchedulerEngine.generar_horarioappendasyncio.coroutines__class_getitem__cline_in_tracebackdia_semanadias_disponibles__dict___dictenumerate__func__generar_horarioget__getstate__grupo_idgruposgrupos_datahora_finhora_iniciohora_maxhora_minhorashoras_max_diahoras_semanalesid_is_coroutineitemsmaestro_idmaestrosmaestros_data__main__materia_idmateriasmaterias_datamaterias_ids__module____name____new__pop__pyx_checksum__pyx_result__pyx_state__pyx_type__pyx_unpickle_SchedulerEngine__pyx_vtable____qualname__random__reduce____reduce_cython____reduce_ex__schedulerself__set_name__setdefault__setstate____setstate_cython__shufflestate__test__updateuse_setstatevalues\200A\360$\000\t\"\240\021\330\010!\240\021\330\010 \240\001\360\006\000\t\033\230-\240r\320):\270#\270Q\270o\310R\320Oa\320ab\360\006\000\t \230q\330\010\014\210K\220q\330\014\037\230w\240d\250!\320+;\2701\330\014\020\220\016\230a\330\020\023\220;\230g\240Q\330\024(\250\001\250\036\260q\330\020$\240A\240[\260\007\260q\270\001\360\006\000\t\r\210N\230!\330\014\022\220(\230!\320\033/\250q\260\001\360\006\000\t\r\210I\220Q\330\014\027\220u\230A\230Q\360\006\000\r)\250\001\330\014%\240Q\360\006\000\r\021\220\013\2301\330\020\035\230W\240A\240Q\340\020\023\220;\230g\240Q\330\024\025\360\006\000\021\025\220E\320\031-\250Q\250a\330\024\027\220q\230\001\230\026\230w\240a\330\0301\260\021\260.\300\001\330\030.\250a\250q\260\001\260\031\270!\330\030\031\360\006\000\r\"\240\021\330\014\020\220\013\2301\330\020\035\230W\240A\240Q\330\020\023\220;\230g\240Q\330\024\025\330\020\"\240'\250\021\250!\330\020\"\240'\250\021\330\024\032\230!\330\024\035\230Q\360\024\000\r%\240D\250\n\260\"\260D""\270\001\360\006\000\r$\2401\330\014\020\220\005\220Q\330\020(\250\001\250\021\250!\360\010\000\r \230q\240\003\2404\240u\250E\260\021\260!\330\014\034\230A\230S\240\002\240!\330\014 \240\002\240#\240R\240q\360\006\000\r\021\220\005\220U\230!\2303\230a\230q\330\020\024\220E\230\025\230a\230r\240\022\2403\240c\250\021\250!\330\024\027\320\027)\250\021\250\"\250A\250Y\260b\3208J\310!\3102\310Q\310a\330\030*\250!\2504\320/A\300\021\300%\320GY\320YZ\320Z^\320^p\320pq\320qr\360\006\000\r\021\320\020 \240\001\330\020\035\230\\\250\021\250!\330\020\"\240,\250a\250q\330\020$\240A\340\020\026\320\026&\240b\250\001\330\024!\240\021\330\024\"\320\"8\270\002\270!\360\006\000\025\031\230\005\230U\240!\2401\330\030\033\2302\230W\240O\2604\260}\300A\300S\310\002\310!\330\034\037\230}\250A\250S\260\002\260!\330 .\250m\2701\270A\330 ,\250A\360\006\000\025\030\220z\240\024\240Q\330\030\034\230E\240\025\240a\240q\330\034\037\230}\250A\250S\260\002\260!\330 #\240=\260\001\260\023\260B\260a\330$2\260-\270q\300\001\330$0\260\001\340\024\027\220z\240\024\240Q\330\030(\250\001\250\032\2607\270\"\270L\310\001\330\030%\240Q\240n\260A\330\030&\240d\250!\2501\330\030+\2501\340\030\031\360\010\000\r\021\220\007\220u\230A\230Q\340\020\023\220=\240\001\240\025\240b\320(>\270d\320BS\320ST\320TY\320Y]\320]^\330\024\030\230\007\230u\240A\240S\250\001\320)9\270\021\270!\330\030\035\230V\320#3\2601\260D\270\001\270\021\330\030\033\2304\230s\240!\330\034,\250A\250T\260\021\260(\270%\270q\330\034)\250\021\250(\260!\330\034-\250Q\250g\260Q\330\034\035\360\006\000\021\027\220m\2401\240E\250\022\2501\330\024\037\230q\360\006\000\025\031\320\030(\250\001\330\030\036\230l\250!\2501\330\030$\240A\330\030\034\230N\250%\320/?\270q\300\001\330\034\037\230}\250C\250q\330 ,\250A\330 !\340\030\033\2304\230q\330\034,\250A\250T\260\027\270\002\270%\270q\330\034)\250\021\250(\260!\330\034'\240q\330\034\035\360\006\000\025\030\220t\2301\330\030\033\2303\230a\320\0373\2602\260Q\340\034*\250-\260q\270\005\270R\270s\300!""\3001\330\034\"\320\"4\260A\260\\\300\021\300!\330\034,\250A\250T\260\027\270\002\270%\270q\330\034)\250\021\250(\260!\340\034\035\360\006\000\r\037\230a\330\014\020\220\007\220u\230A\230Q\330\020\037\230w\240a\320'7\260q\270\004\270A\360\006\000\r\021\220\007\220u\230A\230Q\330\020\036\230d\240!\360\006\000\021 \230\177\250a\250t\2601\330\020\026\220h\230a\230q\340\020\024\220L\240\014\250A\330\024\027\220|\2402\240Y\250b\260\004\260A\330\030\031\340\024\036\320\0367\260t\2701\270A\330\024\027\220t\2301\330\030\031\340\024!\240\027\250\001\250\021\330\024'\240w\250d\260!\3203G\300q\310\003\3103\310c\320QT\320TU\330\024(\250\007\250t\2601\3204E\300Q\360\006\000\025\030\220t\2307\240!\330\030\031\360\006\000\025$\2401\330\024\027\220{\240\"\240A\330\030'\240t\320+=\270Q\270k\310\021\310!\330\024\027\220}\240B\240i\250r\260\021\330\030\031\340\024\037\230|\2502\250Q\360\006\000\025\030\220t\2304\320\037>\270a\270|\3105\320P]\320]^\330\030\031\360\006\000\025\030\220t\2304\320\037<\270A\270Z\300u\310M\320YZ\330\030\031\360\006\000\025\031\230\017\240q\250\014\260J\270e\300=\320PQ\340\024 \240\007\240q\330\030&\240a\330\030&\240a\330\030$\240A\330\030&\240a\330\030'\240q\330\030$\240A\360\006\000\025#\240!\340\010\017\210q\200\001\330\004-\250Q\250f\260A\200\001\360\010\000\005\016\210T\220\033\230D\240\013\2504\320/C\3004\300}\320TX\320Xg\320gk\320kz\320z~\360\000\000\177\001R\002\360\000\000R\002V\002\360\000\000V\002W\002\330\004\014\210G\2201\220F\230,\240a\330\004\007\200v\210W\220E\230\024\230Q\330\010\022\220!\330\010\027\220q\340\010\030\230\001\330\004\007\200q\330\010\017\320\0170\260\004\260A\260W\270K\300w\310a\340\010\017\320\0170\260\004\260A\260W\270K\300q\200\001\340\004\037\230q\320 0\260\013\270;\300k\320QR\330\004\023\220?\240(\250!\2501\330\004\007\200|\2207\230!\330\0101\260\021\3202D\300N\320RS\330\004\013\2101";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
     PyObject **stringtab = __pyx_mstate->__pyx_string_tab;
     Py_ssize_t pos = 0;
-    for (int i = 0; i < 68; i++) {
+    for (int i = 0; i < 76; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyUnicode_DecodeUTF8(bytes + pos, bytes_length, NULL);
       if (likely(string) && i >= 9) PyUnicode_InternInPlace(&string);
@@ -7733,7 +10485,7 @@ const char* const bytes = "?Note that Cython is deliberately stricter than PEP-4
       stringtab[i] = string;
       pos += bytes_length;
     }
-    for (int i = 68; i < 72; i++) {
+    for (int i = 76; i < 80; i++) {
       Py_ssize_t bytes_length = index[i].length;
       PyObject *string = PyBytes_FromStringAndSize(bytes + pos, bytes_length);
       stringtab[i] = string;
@@ -7744,14 +10496,14 @@ const char* const bytes = "?Note that Cython is deliberately stricter than PEP-4
       }
     }
     Py_XDECREF(data);
-    for (Py_ssize_t i = 0; i < 72; i++) {
+    for (Py_ssize_t i = 0; i < 80; i++) {
       if (unlikely(PyObject_Hash(stringtab[i]) == -1)) {
         __PYX_ERR(0, 1, __pyx_L1_error)
       }
     }
     #if CYTHON_IMMORTAL_CONSTANTS
     {
-      PyObject **table = stringtab + 68;
+      PyObject **table = stringtab + 76;
       for (Py_ssize_t i=0; i<4; ++i) {
         #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
         Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
@@ -7764,17 +10516,17 @@ const char* const bytes = "?Note that Cython is deliberately stricter than PEP-4
   }
   {
     PyObject **numbertab = __pyx_mstate->__pyx_number_tab + 0;
-    int8_t const cint_constants_1[] = {0};
-    int32_t const cint_constants_4[] = {184869572L};
-    for (int i = 0; i < 2; i++) {
-      numbertab[i] = PyLong_FromLong((i < 1 ? cint_constants_1[i - 0] : cint_constants_4[i - 1]));
+    int8_t const cint_constants_1[] = {0,-1,1,2,3,4,8,100};
+    int32_t const cint_constants_4[] = {168994040L};
+    for (int i = 0; i < 9; i++) {
+      numbertab[i] = PyLong_FromLong((i < 8 ? cint_constants_1[i - 0] : cint_constants_4[i - 8]));
       if (unlikely(!numbertab[i])) __PYX_ERR(0, 1, __pyx_L1_error)
     }
   }
   #if CYTHON_IMMORTAL_CONSTANTS
   {
     PyObject **table = __pyx_mstate->__pyx_number_tab;
-    for (Py_ssize_t i=0; i<2; ++i) {
+    for (Py_ssize_t i=0; i<9; ++i) {
       #if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
       Py_SET_REFCNT(table[i], _Py_IMMORTAL_REFCNT_LOCAL);
       #else
@@ -7794,7 +10546,7 @@ typedef struct {
     unsigned int num_kwonly_args : 1;
     unsigned int nlocals : 3;
     unsigned int flags : 10;
-    unsigned int first_line : 8;
+    unsigned int first_line : 7;
 } __Pyx_PyCode_New_function_description;
 /* NewCodeObj.proto */
 static PyObject* __Pyx_PyCode_New(
@@ -7811,14 +10563,14 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   PyObject* tuple_dedup_map = PyDict_New();
   if (unlikely(!tuple_dedup_map)) return -1;
   {
-    const __Pyx_PyCode_New_function_description descr = {4, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 131};
+    const __Pyx_PyCode_New_function_description descr = {4, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 109};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_maestros_data, __pyx_mstate->__pyx_n_u_materias_data, __pyx_mstate->__pyx_n_u_grupos_data};
-    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_scheduler_pyx, __pyx_mstate->__pyx_n_u_generar_horario, __pyx_mstate->__pyx_kp_b_iso88591_A_Kq_b_q_1_1_G5_q_uAT_D_as_r_9Bd, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[0] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_scheduler_pyx, __pyx_mstate->__pyx_n_u_generar_horario, __pyx_mstate->__pyx_kp_b_iso88591_A_r_QoROaab_q_Kq_wd_1_a_gQ_q_A_q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[0])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 1};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_state, __pyx_mstate->__pyx_n_u_dict_2, __pyx_mstate->__pyx_n_u_use_setstate};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_mstate->__pyx_kp_b_iso88591_T_D_4_D_tSbbffyy_G1F_a_vWE_Q_q, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_mstate->__pyx_kp_b_iso88591_T_D_4_C4_TXXggkkzz_R_R_V_V_W_G1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 16};
@@ -9291,6 +12043,199 @@ __Pyx_RaiseUnexpectedTypeError(const char *expected, PyObject *obj)
     return 0;
 }
 
+/* SliceTupleAndList */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE void __Pyx_crop_slice(Py_ssize_t* _start, Py_ssize_t* _stop, Py_ssize_t* _length) {
+    Py_ssize_t start = *_start, stop = *_stop, length = *_length;
+    if (start < 0) {
+        start += length;
+        if (start < 0)
+            start = 0;
+    }
+    if (stop < 0)
+        stop += length;
+    else if (stop > length)
+        stop = length;
+    *_length = stop - start;
+    *_start = start;
+    *_stop = stop;
+}
+static CYTHON_INLINE PyObject* __Pyx_PyTuple_GetSlice(
+            PyObject* src, Py_ssize_t start, Py_ssize_t stop) {
+    Py_ssize_t length = PyTuple_GET_SIZE(src);
+    __Pyx_crop_slice(&start, &stop, &length);
+    return __Pyx_PyTuple_FromArray(((PyTupleObject*)src)->ob_item + start, length);
+}
+static CYTHON_INLINE PyObject* __Pyx_PyList_GetSlice_locked(
+            PyObject* src, Py_ssize_t start, Py_ssize_t stop) {
+    Py_ssize_t length = PyList_GET_SIZE(src);
+    __Pyx_crop_slice(&start, &stop, &length);
+    if (length <= 0) {
+        return PyList_New(0);
+    }
+    return __Pyx_PyList_FromArray(((PyListObject*)src)->ob_item + start, length);
+}
+static CYTHON_INLINE PyObject* __Pyx_PyList_GetSlice(
+            PyObject* src, Py_ssize_t start, Py_ssize_t stop) {
+    PyObject *result;
+    __Pyx_BEGIN_CRITICAL_SECTION(src);
+    result = __Pyx_PyList_GetSlice_locked(src, start, stop);
+    __Pyx_END_CRITICAL_SECTION();
+    return result;
+}
+#endif // CYTHON_COMPILING_IN_CPYTHON
+
+/* PyObjectFastCallMethod */
+#if !CYTHON_VECTORCALL || PY_VERSION_HEX < 0x03090000
+static PyObject *__Pyx_PyObject_FastCallMethod(PyObject *name, PyObject *const *args, size_t nargsf) {
+    PyObject *result;
+    PyObject *attr = PyObject_GetAttr(args[0], name);
+    if (unlikely(!attr))
+        return NULL;
+    result = __Pyx_PyObject_FastCall(attr, args+1, nargsf - 1);
+    Py_DECREF(attr);
+    return result;
+}
+#endif
+
+/* PyObjectCall2Args (used by PyObjectCallMethod1) */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_Call2Args(PyObject* function, PyObject* arg1, PyObject* arg2) {
+    PyObject *args[3] = {NULL, arg1, arg2};
+    return __Pyx_PyObject_FastCall(function, args+1, 2 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET);
+}
+
+/* PyObjectGetMethod (used by PyObjectCallMethod1) */
+#if !(CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000)))
+static int __Pyx_PyObject_GetMethod(PyObject *obj, PyObject *name, PyObject **method) {
+    PyObject *attr;
+#if CYTHON_UNPACK_METHODS && CYTHON_COMPILING_IN_CPYTHON && CYTHON_USE_PYTYPE_LOOKUP
+    __Pyx_TypeName type_name;
+    PyTypeObject *tp = Py_TYPE(obj);
+    PyObject *descr;
+    descrgetfunc f = NULL;
+    PyObject **dictptr, *dict;
+    int meth_found = 0;
+    assert (*method == NULL);
+    if (unlikely(tp->tp_getattro != PyObject_GenericGetAttr)) {
+        attr = __Pyx_PyObject_GetAttrStr(obj, name);
+        goto try_unpack;
+    }
+    if (unlikely(tp->tp_dict == NULL) && unlikely(PyType_Ready(tp) < 0)) {
+        return 0;
+    }
+    descr = _PyType_Lookup(tp, name);
+    if (likely(descr != NULL)) {
+        Py_INCREF(descr);
+#if defined(Py_TPFLAGS_METHOD_DESCRIPTOR) && Py_TPFLAGS_METHOD_DESCRIPTOR
+        if (__Pyx_PyType_HasFeature(Py_TYPE(descr), Py_TPFLAGS_METHOD_DESCRIPTOR))
+#else
+        #ifdef __Pyx_CyFunction_USED
+        if (likely(PyFunction_Check(descr) || __Pyx_IS_TYPE(descr, &PyMethodDescr_Type) || __Pyx_CyFunction_Check(descr)))
+        #else
+        if (likely(PyFunction_Check(descr) || __Pyx_IS_TYPE(descr, &PyMethodDescr_Type)))
+        #endif
+#endif
+        {
+            meth_found = 1;
+        } else {
+            f = Py_TYPE(descr)->tp_descr_get;
+            if (f != NULL && PyDescr_IsData(descr)) {
+                attr = f(descr, obj, (PyObject *)Py_TYPE(obj));
+                Py_DECREF(descr);
+                goto try_unpack;
+            }
+        }
+    }
+    dictptr = _PyObject_GetDictPtr(obj);
+    if (dictptr != NULL && (dict = *dictptr) != NULL) {
+        Py_INCREF(dict);
+        attr = __Pyx_PyDict_GetItemStr(dict, name);
+        if (attr != NULL) {
+            Py_INCREF(attr);
+            Py_DECREF(dict);
+            Py_XDECREF(descr);
+            goto try_unpack;
+        }
+        Py_DECREF(dict);
+    }
+    if (meth_found) {
+        *method = descr;
+        return 1;
+    }
+    if (f != NULL) {
+        attr = f(descr, obj, (PyObject *)Py_TYPE(obj));
+        Py_DECREF(descr);
+        goto try_unpack;
+    }
+    if (likely(descr != NULL)) {
+        *method = descr;
+        return 0;
+    }
+    type_name = __Pyx_PyType_GetFullyQualifiedName(tp);
+    PyErr_Format(PyExc_AttributeError,
+                 "'" __Pyx_FMT_TYPENAME "' object has no attribute '%U'",
+                 type_name, name);
+    __Pyx_DECREF_TypeName(type_name);
+    return 0;
+#else
+    attr = __Pyx_PyObject_GetAttrStr(obj, name);
+    goto try_unpack;
+#endif
+try_unpack:
+#if CYTHON_UNPACK_METHODS
+    if (likely(attr) && PyMethod_Check(attr) && likely(PyMethod_GET_SELF(attr) == obj)) {
+        PyObject *function = PyMethod_GET_FUNCTION(attr);
+        Py_INCREF(function);
+        Py_DECREF(attr);
+        *method = function;
+        return 1;
+    }
+#endif
+    *method = attr;
+    return 0;
+}
+#endif
+
+/* PyObjectCallMethod1 (used by append) */
+#if !(CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000)))
+static PyObject* __Pyx__PyObject_CallMethod1(PyObject* method, PyObject* arg) {
+    PyObject *result = __Pyx_PyObject_CallOneArg(method, arg);
+    Py_DECREF(method);
+    return result;
+}
+#endif
+static PyObject* __Pyx_PyObject_CallMethod1(PyObject* obj, PyObject* method_name, PyObject* arg) {
+#if CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000))
+    PyObject *args[2] = {obj, arg};
+    (void) __Pyx_PyObject_CallOneArg;
+    (void) __Pyx_PyObject_Call2Args;
+    return PyObject_VectorcallMethod(method_name, args, 2 | PY_VECTORCALL_ARGUMENTS_OFFSET, NULL);
+#else
+    PyObject *method = NULL, *result;
+    int is_method = __Pyx_PyObject_GetMethod(obj, method_name, &method);
+    if (likely(is_method)) {
+        result = __Pyx_PyObject_Call2Args(method, obj, arg);
+        Py_DECREF(method);
+        return result;
+    }
+    if (unlikely(!method)) return NULL;
+    return __Pyx__PyObject_CallMethod1(method, arg);
+#endif
+}
+
+/* append */
+static CYTHON_INLINE int __Pyx_PyObject_Append(PyObject* L, PyObject* x) {
+    if (likely(PyList_CheckExact(L))) {
+        if (unlikely(__Pyx_PyList_Append(L, x) < 0)) return -1;
+    } else {
+        PyObject* retval = __Pyx_PyObject_CallMethod1(L, __pyx_mstate_global->__pyx_n_u_append, x);
+        if (unlikely(!retval))
+            return -1;
+        Py_DECREF(retval);
+    }
+    return 0;
+}
+
 /* DictGetItem */
 #if !CYTHON_COMPILING_IN_PYPY
 static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key) {
@@ -9309,6 +12254,1043 @@ static PyObject *__Pyx_PyDict_GetItem(PyObject *d, PyObject* key) {
     return value;
 }
 #endif
+
+/* IterFinish (used by dict_iter) */
+static CYTHON_INLINE int __Pyx_IterFinish(void) {
+    PyObject* exc_type;
+    __Pyx_PyThreadState_declare
+    __Pyx_PyThreadState_assign
+    exc_type = __Pyx_PyErr_CurrentExceptionType();
+    if (unlikely(exc_type)) {
+        if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration)))
+            return -1;
+        __Pyx_PyErr_Clear();
+        return 0;
+    }
+    return 0;
+}
+
+/* PyObjectCallNoArg (used by PyObjectCallMethod0) */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func) {
+    PyObject *arg[2] = {NULL, NULL};
+    return __Pyx_PyObject_FastCall(func, arg + 1, 0 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET);
+}
+
+/* PyObjectCallMethod0 (used by dict_iter) */
+static PyObject* __Pyx_PyObject_CallMethod0(PyObject* obj, PyObject* method_name) {
+#if CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000))
+    PyObject *args[1] = {obj};
+    (void) __Pyx_PyObject_CallOneArg;
+    (void) __Pyx_PyObject_CallNoArg;
+    return PyObject_VectorcallMethod(method_name, args, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, NULL);
+#else
+    PyObject *method = NULL, *result = NULL;
+    int is_method = __Pyx_PyObject_GetMethod(obj, method_name, &method);
+    if (likely(is_method)) {
+        result = __Pyx_PyObject_CallOneArg(method, obj);
+        Py_DECREF(method);
+        return result;
+    }
+    if (unlikely(!method)) goto bad;
+    result = __Pyx_PyObject_CallNoArg(method);
+    Py_DECREF(method);
+bad:
+    return result;
+#endif
+}
+
+/* RaiseNeedMoreValuesToUnpack (used by UnpackTuple2) */
+static CYTHON_INLINE void __Pyx_RaiseNeedMoreValuesError(Py_ssize_t index) {
+    PyErr_Format(PyExc_ValueError,
+                 "need more than %" CYTHON_FORMAT_SSIZE_T "d value%.1s to unpack",
+                 index, (index == 1) ? "" : "s");
+}
+
+/* RaiseTooManyValuesToUnpack (used by UnpackItemEndCheck) */
+static CYTHON_INLINE void __Pyx_RaiseTooManyValuesError(Py_ssize_t expected) {
+    PyErr_Format(PyExc_ValueError,
+                 "too many values to unpack (expected %" CYTHON_FORMAT_SSIZE_T "d)", expected);
+}
+
+/* UnpackItemEndCheck (used by UnpackTuple2) */
+static int __Pyx_IternextUnpackEndCheck(PyObject *retval, Py_ssize_t expected) {
+    if (unlikely(retval)) {
+        Py_DECREF(retval);
+        __Pyx_RaiseTooManyValuesError(expected);
+        return -1;
+    }
+    return __Pyx_IterFinish();
+}
+
+/* RaiseNoneIterError (used by UnpackTupleError) */
+static CYTHON_INLINE void __Pyx_RaiseNoneNotIterableError(void) {
+    PyErr_SetString(PyExc_TypeError, "'NoneType' object is not iterable");
+}
+
+/* UnpackTupleError (used by UnpackTuple2) */
+static void __Pyx_UnpackTupleError(PyObject *t, Py_ssize_t index) {
+    if (t == Py_None) {
+      __Pyx_RaiseNoneNotIterableError();
+    } else {
+      Py_ssize_t size = __Pyx_PyTuple_GET_SIZE(t);
+ #if !CYTHON_ASSUME_SAFE_SIZE
+      if (unlikely(size < 0)) return;
+ #endif
+      if (size < index) {
+        __Pyx_RaiseNeedMoreValuesError(size);
+      } else {
+        __Pyx_RaiseTooManyValuesError(index);
+      }
+    }
+}
+
+/* UnpackTuple2 (used by dict_iter) */
+static CYTHON_INLINE int __Pyx_unpack_tuple2(
+        PyObject* tuple, PyObject** value1, PyObject** value2, int is_tuple, int has_known_size, int decref_tuple) {
+    if (likely(is_tuple || PyTuple_Check(tuple))) {
+        Py_ssize_t size;
+        if (has_known_size) {
+            return __Pyx_unpack_tuple2_exact(tuple, value1, value2, decref_tuple);
+        }
+        size = __Pyx_PyTuple_GET_SIZE(tuple);
+        if (likely(size == 2)) {
+            return __Pyx_unpack_tuple2_exact(tuple, value1, value2, decref_tuple);
+        }
+        if (size >= 0) {
+            __Pyx_UnpackTupleError(tuple, 2);
+        }
+        return -1;
+    } else {
+        return __Pyx_unpack_tuple2_generic(tuple, value1, value2, has_known_size, decref_tuple);
+    }
+}
+static CYTHON_INLINE int __Pyx_unpack_tuple2_exact(
+        PyObject* tuple, PyObject** pvalue1, PyObject** pvalue2, int decref_tuple) {
+    PyObject *value1 = NULL, *value2 = NULL;
+#if CYTHON_AVOID_BORROWED_REFS || !CYTHON_ASSUME_SAFE_MACROS
+    value1 = __Pyx_PySequence_ITEM(tuple, 0);  if (unlikely(!value1)) goto bad;
+    value2 = __Pyx_PySequence_ITEM(tuple, 1);  if (unlikely(!value2)) goto bad;
+#else
+    value1 = PyTuple_GET_ITEM(tuple, 0);  Py_INCREF(value1);
+    value2 = PyTuple_GET_ITEM(tuple, 1);  Py_INCREF(value2);
+#endif
+    if (decref_tuple) {
+        Py_DECREF(tuple);
+    }
+    *pvalue1 = value1;
+    *pvalue2 = value2;
+    return 0;
+#if CYTHON_AVOID_BORROWED_REFS || !CYTHON_ASSUME_SAFE_MACROS
+bad:
+    Py_XDECREF(value1);
+    Py_XDECREF(value2);
+    if (decref_tuple) { Py_XDECREF(tuple); }
+    return -1;
+#endif
+}
+static int __Pyx_unpack_tuple2_generic(PyObject* tuple, PyObject** pvalue1, PyObject** pvalue2,
+                                       int has_known_size, int decref_tuple) {
+    Py_ssize_t index;
+    PyObject *value1 = NULL, *value2 = NULL, *iter = NULL;
+    iternextfunc iternext;
+    iter = PyObject_GetIter(tuple);
+    if (unlikely(!iter)) goto bad;
+    if (decref_tuple) { Py_DECREF(tuple); tuple = NULL; }
+    iternext = __Pyx_PyObject_GetIterNextFunc(iter);
+    value1 = iternext(iter); if (unlikely(!value1)) { index = 0; goto unpacking_failed; }
+    value2 = iternext(iter); if (unlikely(!value2)) { index = 1; goto unpacking_failed; }
+    if (!has_known_size && unlikely(__Pyx_IternextUnpackEndCheck(iternext(iter), 2))) goto bad;
+    Py_DECREF(iter);
+    *pvalue1 = value1;
+    *pvalue2 = value2;
+    return 0;
+unpacking_failed:
+    if (!has_known_size && __Pyx_IterFinish() == 0)
+        __Pyx_RaiseNeedMoreValuesError(index);
+bad:
+    Py_XDECREF(iter);
+    Py_XDECREF(value1);
+    Py_XDECREF(value2);
+    if (decref_tuple) { Py_XDECREF(tuple); }
+    return -1;
+}
+
+/* dict_iter */
+#if CYTHON_COMPILING_IN_PYPY
+#include <string.h>
+#endif
+static CYTHON_INLINE PyObject* __Pyx_dict_iterator(PyObject* iterable, int is_dict, PyObject* method_name,
+                                                   Py_ssize_t* p_orig_length, int* p_source_is_dict) {
+    is_dict = is_dict || likely(PyDict_CheckExact(iterable));
+    *p_source_is_dict = is_dict;
+    if (is_dict) {
+#if !CYTHON_COMPILING_IN_PYPY
+        *p_orig_length = PyDict_Size(iterable);
+        Py_INCREF(iterable);
+        return iterable;
+#else
+        static PyObject *py_items = NULL, *py_keys = NULL, *py_values = NULL;
+        PyObject **pp = NULL;
+        if (method_name) {
+            const char *name = PyUnicode_AsUTF8(method_name);
+            if (strcmp(name, "iteritems") == 0) pp = &py_items;
+            else if (strcmp(name, "iterkeys") == 0) pp = &py_keys;
+            else if (strcmp(name, "itervalues") == 0) pp = &py_values;
+            if (pp) {
+                if (!*pp) {
+                    *pp = PyUnicode_FromString(name + 4);
+                    if (!*pp)
+                        return NULL;
+                }
+                method_name = *pp;
+            }
+        }
+#endif
+    }
+    *p_orig_length = 0;
+    if (method_name) {
+        PyObject* iter;
+        iterable = __Pyx_PyObject_CallMethod0(iterable, method_name);
+        if (!iterable)
+            return NULL;
+#if !CYTHON_COMPILING_IN_PYPY
+        if (PyTuple_CheckExact(iterable) || PyList_CheckExact(iterable))
+            return iterable;
+#endif
+        iter = PyObject_GetIter(iterable);
+        Py_DECREF(iterable);
+        return iter;
+    }
+    return PyObject_GetIter(iterable);
+}
+#if !CYTHON_AVOID_BORROWED_REFS
+static CYTHON_INLINE int __Pyx_dict_iter_next_source_is_dict(
+        PyObject* iter_obj, CYTHON_NCP_UNUSED Py_ssize_t orig_length, CYTHON_NCP_UNUSED Py_ssize_t* ppos,
+        PyObject** pkey, PyObject** pvalue, PyObject** pitem) {
+    PyObject *key, *value;
+    if (unlikely(orig_length != PyDict_Size(iter_obj))) {
+        PyErr_SetString(PyExc_RuntimeError, "dictionary changed size during iteration");
+        return -1;
+    }
+    if (unlikely(!PyDict_Next(iter_obj, ppos, &key, &value))) {
+        return 0;
+    }
+    if (pitem) {
+        PyObject* tuple = PyTuple_New(2);
+        if (unlikely(!tuple)) {
+            return -1;
+        }
+        Py_INCREF(key);
+        Py_INCREF(value);
+        #if CYTHON_ASSUME_SAFE_MACROS
+        PyTuple_SET_ITEM(tuple, 0, key);
+        PyTuple_SET_ITEM(tuple, 1, value);
+        #else
+        if (unlikely(PyTuple_SetItem(tuple, 0, key) < 0)) {
+            Py_DECREF(value);
+            Py_DECREF(tuple);
+            return -1;
+        }
+        if (unlikely(PyTuple_SetItem(tuple, 1, value) < 0)) {
+            Py_DECREF(tuple);
+            return -1;
+        }
+        #endif
+        *pitem = tuple;
+    } else {
+        if (pkey) {
+            Py_INCREF(key);
+            *pkey = key;
+        }
+        if (pvalue) {
+            Py_INCREF(value);
+            *pvalue = value;
+        }
+    }
+    return 1;
+}
+#endif
+static CYTHON_INLINE int __Pyx_dict_iter_next(
+        PyObject* iter_obj, CYTHON_NCP_UNUSED Py_ssize_t orig_length, CYTHON_NCP_UNUSED Py_ssize_t* ppos,
+        PyObject** pkey, PyObject** pvalue, PyObject** pitem, int source_is_dict) {
+    PyObject* next_item;
+#if !CYTHON_AVOID_BORROWED_REFS
+    if (source_is_dict) {
+        int result;
+#if PY_VERSION_HEX >= 0x030d0000 && !CYTHON_COMPILING_IN_LIMITED_API
+        Py_BEGIN_CRITICAL_SECTION(iter_obj);
+#endif
+        result = __Pyx_dict_iter_next_source_is_dict(iter_obj, orig_length, ppos, pkey, pvalue, pitem);
+#if PY_VERSION_HEX >= 0x030d0000 && !CYTHON_COMPILING_IN_LIMITED_API
+        Py_END_CRITICAL_SECTION();
+#endif
+        return result;
+    } else if (PyTuple_CheckExact(iter_obj)) {
+        Py_ssize_t pos = *ppos;
+        Py_ssize_t tuple_size = __Pyx_PyTuple_GET_SIZE(iter_obj);
+        #if !CYTHON_ASSUME_SAFE_SIZE
+        if (unlikely(tuple_size < 0)) return -1;
+        #endif
+        if (unlikely(pos >= tuple_size)) return 0;
+        *ppos = pos + 1;
+        #if CYTHON_ASSUME_SAFE_MACROS
+        next_item = PyTuple_GET_ITEM(iter_obj, pos);
+        #else
+        next_item = PyTuple_GetItem(iter_obj, pos);
+        if (unlikely(!next_item)) return -1;
+        #endif
+        Py_INCREF(next_item);
+    } else if (PyList_CheckExact(iter_obj)) {
+        Py_ssize_t pos = *ppos;
+        Py_ssize_t list_size = __Pyx_PyList_GET_SIZE(iter_obj);
+        #if !CYTHON_ASSUME_SAFE_SIZE
+        if (unlikely(list_size < 0)) return -1;
+        #endif
+        if (unlikely(pos >= list_size)) return 0;
+        *ppos = pos + 1;
+        next_item = __Pyx_PyList_GetItemRef(iter_obj, pos);
+        if (unlikely(!next_item)) return -1;
+    } else
+#endif
+    {
+        next_item = PyIter_Next(iter_obj);
+        if (unlikely(!next_item)) {
+            return __Pyx_IterFinish();
+        }
+    }
+    if (pitem) {
+        *pitem = next_item;
+    } else if (pkey && pvalue) {
+        if (__Pyx_unpack_tuple2(next_item, pkey, pvalue, source_is_dict, source_is_dict, 1))
+            return -1;
+    } else if (pkey) {
+        *pkey = next_item;
+    } else {
+        *pvalue = next_item;
+    }
+    return 1;
+}
+
+/* GetModuleGlobalName */
+#if CYTHON_USE_DICT_VERSIONS
+static PyObject *__Pyx__GetModuleGlobalName(PyObject *name, PY_UINT64_T *dict_version, PyObject **dict_cached_value)
+#else
+static CYTHON_INLINE PyObject *__Pyx__GetModuleGlobalName(PyObject *name)
+#endif
+{
+    PyObject *result;
+#if CYTHON_COMPILING_IN_LIMITED_API
+    if (unlikely(!__pyx_m)) {
+        if (!PyErr_Occurred())
+            PyErr_SetNone(PyExc_NameError);
+        return NULL;
+    }
+    result = PyObject_GetAttr(__pyx_m, name);
+    if (likely(result)) {
+        return result;
+    }
+    PyErr_Clear();
+#elif CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS
+    if (unlikely(__Pyx_PyDict_GetItemRef(__pyx_mstate_global->__pyx_d, name, &result) == -1)) PyErr_Clear();
+    __PYX_UPDATE_DICT_CACHE(__pyx_mstate_global->__pyx_d, result, *dict_cached_value, *dict_version)
+    if (likely(result)) {
+        return result;
+    }
+#else
+    result = _PyDict_GetItem_KnownHash(__pyx_mstate_global->__pyx_d, name, ((PyASCIIObject *) name)->hash);
+    __PYX_UPDATE_DICT_CACHE(__pyx_mstate_global->__pyx_d, result, *dict_cached_value, *dict_version)
+    if (likely(result)) {
+        return __Pyx_NewRef(result);
+    }
+    PyErr_Clear();
+#endif
+    return __Pyx_GetBuiltinName(name);
+}
+
+/* PyLongBinop */
+#if !CYTHON_COMPILING_IN_PYPY
+static PyObject* __Pyx_Fallback___Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2, int inplace) {
+    return (inplace ? PyNumber_InPlaceAdd : PyNumber_Add)(op1, op2);
+}
+#if CYTHON_USE_PYLONG_INTERNALS
+static PyObject* __Pyx_Unpacked___Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check) {
+    CYTHON_MAYBE_UNUSED_VAR(inplace);
+    CYTHON_UNUSED_VAR(zerodivision_check);
+    const long b = intval;
+    long a;
+    const PY_LONG_LONG llb = intval;
+    PY_LONG_LONG lla;
+    if (unlikely(__Pyx_PyLong_IsZero(op1))) {
+        return __Pyx_NewRef(op2);
+    }
+    const int is_positive = __Pyx_PyLong_IsPos(op1);
+    const digit* digits = __Pyx_PyLong_Digits(op1);
+    const Py_ssize_t size = __Pyx_PyLong_DigitCount(op1);
+    if (likely(size == 1)) {
+        a = (long) digits[0];
+        if (!is_positive) a *= -1;
+    } else {
+        switch (size) {
+            case 2:
+                if (8 * sizeof(long) - 1 > 2 * PyLong_SHIFT) {
+                    a = (long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0]));
+                    if (!is_positive) a *= -1;
+                    goto calculate_long;
+                } else if (8 * sizeof(PY_LONG_LONG) - 1 > 2 * PyLong_SHIFT) {
+                    lla = (PY_LONG_LONG) (((((unsigned PY_LONG_LONG)digits[1]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[0]));
+                    if (!is_positive) lla *= -1;
+                    goto calculate_long_long;
+                }
+                break;
+            case 3:
+                if (8 * sizeof(long) - 1 > 3 * PyLong_SHIFT) {
+                    a = (long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0]));
+                    if (!is_positive) a *= -1;
+                    goto calculate_long;
+                } else if (8 * sizeof(PY_LONG_LONG) - 1 > 3 * PyLong_SHIFT) {
+                    lla = (PY_LONG_LONG) (((((((unsigned PY_LONG_LONG)digits[2]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[1]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[0]));
+                    if (!is_positive) lla *= -1;
+                    goto calculate_long_long;
+                }
+                break;
+            case 4:
+                if (8 * sizeof(long) - 1 > 4 * PyLong_SHIFT) {
+                    a = (long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0]));
+                    if (!is_positive) a *= -1;
+                    goto calculate_long;
+                } else if (8 * sizeof(PY_LONG_LONG) - 1 > 4 * PyLong_SHIFT) {
+                    lla = (PY_LONG_LONG) (((((((((unsigned PY_LONG_LONG)digits[3]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[2]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[1]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[0]));
+                    if (!is_positive) lla *= -1;
+                    goto calculate_long_long;
+                }
+                break;
+        }
+        return PyLong_Type.tp_as_number->nb_add(op1, op2);
+    }
+    calculate_long:
+        {
+            long x;
+            x = a + b;
+            return PyLong_FromLong(x);
+        }
+    calculate_long_long:
+        {
+            PY_LONG_LONG llx;
+            llx = lla + llb;
+            return PyLong_FromLongLong(llx);
+        }
+    
+}
+#endif
+static PyObject* __Pyx_Float___Pyx_PyLong_AddObjC(PyObject *float_val, long intval, int zerodivision_check) {
+    CYTHON_UNUSED_VAR(zerodivision_check);
+    const long b = intval;
+    double a = __Pyx_PyFloat_AS_DOUBLE(float_val);
+        double result;
+        
+        result = ((double)a) + (double)b;
+        return PyFloat_FromDouble(result);
+}
+static CYTHON_INLINE PyObject* __Pyx_PyLong_AddObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check) {
+    CYTHON_MAYBE_UNUSED_VAR(intval);
+    CYTHON_UNUSED_VAR(zerodivision_check);
+    #if CYTHON_USE_PYLONG_INTERNALS
+    if (likely(PyLong_CheckExact(op1))) {
+        return __Pyx_Unpacked___Pyx_PyLong_AddObjC(op1, op2, intval, inplace, zerodivision_check);
+    }
+    #endif
+    if (PyFloat_CheckExact(op1)) {
+        return __Pyx_Float___Pyx_PyLong_AddObjC(op1, intval, zerodivision_check);
+    }
+    return __Pyx_Fallback___Pyx_PyLong_AddObjC(op1, op2, inplace);
+}
+#endif
+
+/* GetItemInt */
+static PyObject *__Pyx_GetItemInt_Generic(PyObject *o, PyObject* j) {
+    PyObject *r;
+    if (unlikely(!j)) return NULL;
+    r = PyObject_GetItem(o, j);
+    Py_DECREF(j);
+    return r;
+}
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_List_Fast(PyObject *o, Py_ssize_t i,
+                                                              int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_SIZE
+    Py_ssize_t wrapped_i = i;
+    if (wraparound & unlikely(i < 0)) {
+        wrapped_i += PyList_GET_SIZE(o);
+    }
+    if ((CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS || !CYTHON_ASSUME_SAFE_MACROS)) {
+        return __Pyx_PyList_GetItemRefFast(o, wrapped_i, unsafe_shared);
+    } else
+    if ((!boundscheck) || likely(__Pyx_is_valid_index(wrapped_i, PyList_GET_SIZE(o)))) {
+        return __Pyx_NewRef(PyList_GET_ITEM(o, wrapped_i));
+    }
+    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
+#else
+    (void)wraparound;
+    (void)boundscheck;
+    return PySequence_GetItem(o, i);
+#endif
+}
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Tuple_Fast(PyObject *o, Py_ssize_t i,
+                                                              int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_SIZE && CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+    Py_ssize_t wrapped_i = i;
+    if (wraparound & unlikely(i < 0)) {
+        wrapped_i += PyTuple_GET_SIZE(o);
+    }
+    if ((!boundscheck) || likely(__Pyx_is_valid_index(wrapped_i, PyTuple_GET_SIZE(o)))) {
+        return __Pyx_NewRef(PyTuple_GET_ITEM(o, wrapped_i));
+    }
+    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
+#else
+    (void)wraparound;
+    (void)boundscheck;
+    return PySequence_GetItem(o, i);
+#endif
+}
+static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i, int is_list,
+                                                     int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_MACROS && CYTHON_ASSUME_SAFE_SIZE
+    if (is_list || PyList_CheckExact(o)) {
+        Py_ssize_t n = ((!wraparound) | likely(i >= 0)) ? i : i + PyList_GET_SIZE(o);
+        if ((CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS)) {
+            return __Pyx_PyList_GetItemRefFast(o, n, unsafe_shared);
+        } else if ((!boundscheck) || (likely(__Pyx_is_valid_index(n, PyList_GET_SIZE(o))))) {
+            return __Pyx_NewRef(PyList_GET_ITEM(o, n));
+        }
+    } else
+    #if !CYTHON_AVOID_BORROWED_REFS
+    if (PyTuple_CheckExact(o)) {
+        Py_ssize_t n = ((!wraparound) | likely(i >= 0)) ? i : i + PyTuple_GET_SIZE(o);
+        if ((!boundscheck) || likely(__Pyx_is_valid_index(n, PyTuple_GET_SIZE(o)))) {
+            return __Pyx_NewRef(PyTuple_GET_ITEM(o, n));
+        }
+    } else
+    #endif
+#endif
+#if CYTHON_USE_TYPE_SLOTS && !CYTHON_COMPILING_IN_PYPY
+    {
+        PyMappingMethods *mm = Py_TYPE(o)->tp_as_mapping;
+        PySequenceMethods *sm = Py_TYPE(o)->tp_as_sequence;
+        if (!is_list && mm && mm->mp_subscript) {
+            PyObject *r, *key = PyLong_FromSsize_t(i);
+            if (unlikely(!key)) return NULL;
+            r = mm->mp_subscript(o, key);
+            Py_DECREF(key);
+            return r;
+        }
+        if (is_list || likely(sm && sm->sq_item)) {
+            if (wraparound && unlikely(i < 0) && likely(sm->sq_length)) {
+                Py_ssize_t l = sm->sq_length(o);
+                if (likely(l >= 0)) {
+                    i += l;
+                } else {
+                    if (!PyErr_ExceptionMatches(PyExc_OverflowError))
+                        return NULL;
+                    PyErr_Clear();
+                }
+            }
+            return sm->sq_item(o, i);
+        }
+    }
+#else
+    if (is_list || !PyMapping_Check(o)) {
+        return PySequence_GetItem(o, i);
+    }
+#endif
+    (void)wraparound;
+    (void)boundscheck;
+    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
+}
+
+/* ObjectGetItem */
+#if CYTHON_USE_TYPE_SLOTS
+static PyObject *__Pyx_PyObject_GetIndex(PyObject *obj, PyObject *index) {
+    PyObject *runerr = NULL;
+    Py_ssize_t key_value;
+    key_value = __Pyx_PyIndex_AsSsize_t(index);
+    if (likely(key_value != -1 || !(runerr = PyErr_Occurred()))) {
+        return __Pyx_GetItemInt_Fast(obj, key_value, 0, 1, 1, 1);
+    }
+    if (PyErr_GivenExceptionMatches(runerr, PyExc_OverflowError)) {
+        __Pyx_TypeName index_type_name = __Pyx_PyType_GetFullyQualifiedName(Py_TYPE(index));
+        PyErr_Clear();
+        PyErr_Format(PyExc_IndexError,
+            "cannot fit '" __Pyx_FMT_TYPENAME "' into an index-sized integer", index_type_name);
+        __Pyx_DECREF_TypeName(index_type_name);
+    }
+    return NULL;
+}
+static PyObject *__Pyx_PyObject_GetItem_Slow(PyObject *obj, PyObject *key) {
+    __Pyx_TypeName obj_type_name;
+    if (likely(PyType_Check(obj))) {
+        PyObject *meth = __Pyx_PyObject_GetAttrStrNoError(obj, __pyx_mstate_global->__pyx_n_u_class_getitem);
+        if (!meth) {
+            PyErr_Clear();
+        } else {
+            PyObject *result = __Pyx_PyObject_CallOneArg(meth, key);
+            Py_DECREF(meth);
+            return result;
+        }
+    }
+    obj_type_name = __Pyx_PyType_GetFullyQualifiedName(Py_TYPE(obj));
+    PyErr_Format(PyExc_TypeError,
+        "'" __Pyx_FMT_TYPENAME "' object is not subscriptable", obj_type_name);
+    __Pyx_DECREF_TypeName(obj_type_name);
+    return NULL;
+}
+static PyObject *__Pyx_PyObject_GetItem(PyObject *obj, PyObject *key) {
+    PyTypeObject *tp = Py_TYPE(obj);
+    PyMappingMethods *mm = tp->tp_as_mapping;
+    PySequenceMethods *sm = tp->tp_as_sequence;
+    if (likely(mm && mm->mp_subscript)) {
+        return mm->mp_subscript(obj, key);
+    }
+    if (likely(sm && sm->sq_item)) {
+        return __Pyx_PyObject_GetIndex(obj, key);
+    }
+    return __Pyx_PyObject_GetItem_Slow(obj, key);
+}
+#endif
+
+/* pyfrozenset_new (used by PySetContains) */
+static CYTHON_INLINE PyObject* __Pyx_PyFrozenSet_New(PyObject* it) {
+    if (it) {
+        PyObject* result;
+#if CYTHON_COMPILING_IN_PYPY
+        PyObject* args;
+        args = PyTuple_Pack(1, it);
+        if (unlikely(!args))
+            return NULL;
+        result = PyObject_Call((PyObject*)&PyFrozenSet_Type, args, NULL);
+        Py_DECREF(args);
+        return result;
+#else
+        if (PyFrozenSet_CheckExact(it)) {
+            Py_INCREF(it);
+            return it;
+        }
+        result = PyFrozenSet_New(it);
+        if (unlikely(!result))
+            return NULL;
+        if ((__PYX_LIMITED_VERSION_HEX >= 0x030A0000)
+#if CYTHON_COMPILING_IN_LIMITED_API
+            || __Pyx_get_runtime_version() >= 0x030A0000
+#endif
+            )
+            return result;
+        {
+            Py_ssize_t size = __Pyx_PySet_GET_SIZE(result);
+            if (likely(size > 0))
+                return result;
+#if !CYTHON_ASSUME_SAFE_SIZE
+            if (unlikely(size < 0)) {
+                Py_DECREF(result);
+                return NULL;
+            }
+#endif
+        }
+        Py_DECREF(result);
+#endif
+    }
+    return __Pyx_PyObject_CallNoArg((PyObject*) &PyFrozenSet_Type);
+}
+
+/* PySetContains */
+static int __Pyx_PySet_ContainsUnhashable(PyObject *set, PyObject *key) {
+    int result = -1;
+    if (PySet_Check(key) && PyErr_ExceptionMatches(PyExc_TypeError)) {
+        PyObject *tmpkey;
+        PyErr_Clear();
+        tmpkey = __Pyx_PyFrozenSet_New(key);
+        if (tmpkey != NULL) {
+            result = PySet_Contains(set, tmpkey);
+            Py_DECREF(tmpkey);
+        }
+    }
+    return result;
+}
+static CYTHON_INLINE int __Pyx_PySet_ContainsTF(PyObject* key, PyObject* set, int eq) {
+    int result = PySet_Contains(set, key);
+    if (unlikely(result < 0)) {
+        result = __Pyx_PySet_ContainsUnhashable(set, key);
+    }
+    return unlikely(result < 0) ? result : (result == (eq == Py_EQ));
+}
+
+/* SetItemInt */
+static int __Pyx_SetItemInt_Generic(PyObject *o, PyObject *j, PyObject *v) {
+    int r;
+    if (unlikely(!j)) return -1;
+    r = PyObject_SetItem(o, j, v);
+    Py_DECREF(j);
+    return r;
+}
+static CYTHON_INLINE int __Pyx_SetItemInt_Fast(PyObject *o, Py_ssize_t i, PyObject *v, int is_list,
+                                               int wraparound, int boundscheck, int unsafe_shared) {
+    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
+#if CYTHON_ASSUME_SAFE_MACROS && CYTHON_ASSUME_SAFE_SIZE && !CYTHON_AVOID_BORROWED_REFS
+    if (is_list || PyList_CheckExact(o)) {
+        Py_ssize_t n = (!wraparound) ? i : ((likely(i >= 0)) ? i : i + PyList_GET_SIZE(o));
+        if ((CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS && !__Pyx_IS_UNIQUELY_REFERENCED(o, unsafe_shared))) {
+            Py_INCREF(v);
+            return PyList_SetItem(o, n, v);
+        } else if ((!boundscheck) || likely(__Pyx_is_valid_index(n, PyList_GET_SIZE(o)))) {
+            PyObject* old;
+            Py_INCREF(v);
+            old = PyList_GET_ITEM(o, n);
+            PyList_SET_ITEM(o, n, v);
+            Py_DECREF(old);
+            return 0;
+        }
+    } else
+#endif
+#if CYTHON_USE_TYPE_SLOTS && !CYTHON_COMPILING_IN_PYPY
+    {
+        PyMappingMethods *mm = Py_TYPE(o)->tp_as_mapping;
+        PySequenceMethods *sm = Py_TYPE(o)->tp_as_sequence;
+        if (!is_list && mm && mm->mp_ass_subscript) {
+            int r;
+            PyObject *key = PyLong_FromSsize_t(i);
+            if (unlikely(!key)) return -1;
+            r = mm->mp_ass_subscript(o, key, v);
+            Py_DECREF(key);
+            return r;
+        }
+        if (is_list || likely(sm && sm->sq_ass_item)) {
+            if (wraparound && unlikely(i < 0) && likely(sm->sq_length)) {
+                Py_ssize_t l = sm->sq_length(o);
+                if (likely(l >= 0)) {
+                    i += l;
+                } else {
+                    if (!PyErr_ExceptionMatches(PyExc_OverflowError))
+                        return -1;
+                    PyErr_Clear();
+                }
+            }
+            return sm->sq_ass_item(o, i, v);
+        }
+    }
+#else
+    if (is_list || !PyMapping_Check(o)) {
+        return PySequence_SetItem(o, i, v);
+    }
+#endif
+    (void)wraparound;
+    (void)boundscheck;
+    return __Pyx_SetItemInt_Generic(o, PyLong_FromSsize_t(i), v);
+}
+
+/* PyLongBinop */
+#if !CYTHON_COMPILING_IN_PYPY
+static PyObject* __Pyx_Fallback___Pyx_PyLong_SubtractObjC(PyObject *op1, PyObject *op2, int inplace) {
+    return (inplace ? PyNumber_InPlaceSubtract : PyNumber_Subtract)(op1, op2);
+}
+#if CYTHON_USE_PYLONG_INTERNALS
+static PyObject* __Pyx_Unpacked___Pyx_PyLong_SubtractObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check) {
+    CYTHON_MAYBE_UNUSED_VAR(inplace);
+    CYTHON_UNUSED_VAR(zerodivision_check);
+    const long b = intval;
+    long a;
+    const PY_LONG_LONG llb = intval;
+    PY_LONG_LONG lla;
+    if (unlikely(__Pyx_PyLong_IsZero(op1))) {
+        return PyLong_FromLong(-intval);
+    }
+    const int is_positive = __Pyx_PyLong_IsPos(op1);
+    const digit* digits = __Pyx_PyLong_Digits(op1);
+    const Py_ssize_t size = __Pyx_PyLong_DigitCount(op1);
+    if (likely(size == 1)) {
+        a = (long) digits[0];
+        if (!is_positive) a *= -1;
+    } else {
+        switch (size) {
+            case 2:
+                if (8 * sizeof(long) - 1 > 2 * PyLong_SHIFT) {
+                    a = (long) (((((unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0]));
+                    if (!is_positive) a *= -1;
+                    goto calculate_long;
+                } else if (8 * sizeof(PY_LONG_LONG) - 1 > 2 * PyLong_SHIFT) {
+                    lla = (PY_LONG_LONG) (((((unsigned PY_LONG_LONG)digits[1]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[0]));
+                    if (!is_positive) lla *= -1;
+                    goto calculate_long_long;
+                }
+                break;
+            case 3:
+                if (8 * sizeof(long) - 1 > 3 * PyLong_SHIFT) {
+                    a = (long) (((((((unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0]));
+                    if (!is_positive) a *= -1;
+                    goto calculate_long;
+                } else if (8 * sizeof(PY_LONG_LONG) - 1 > 3 * PyLong_SHIFT) {
+                    lla = (PY_LONG_LONG) (((((((unsigned PY_LONG_LONG)digits[2]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[1]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[0]));
+                    if (!is_positive) lla *= -1;
+                    goto calculate_long_long;
+                }
+                break;
+            case 4:
+                if (8 * sizeof(long) - 1 > 4 * PyLong_SHIFT) {
+                    a = (long) (((((((((unsigned long)digits[3]) << PyLong_SHIFT) | (unsigned long)digits[2]) << PyLong_SHIFT) | (unsigned long)digits[1]) << PyLong_SHIFT) | (unsigned long)digits[0]));
+                    if (!is_positive) a *= -1;
+                    goto calculate_long;
+                } else if (8 * sizeof(PY_LONG_LONG) - 1 > 4 * PyLong_SHIFT) {
+                    lla = (PY_LONG_LONG) (((((((((unsigned PY_LONG_LONG)digits[3]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[2]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[1]) << PyLong_SHIFT) | (unsigned PY_LONG_LONG)digits[0]));
+                    if (!is_positive) lla *= -1;
+                    goto calculate_long_long;
+                }
+                break;
+        }
+        return PyLong_Type.tp_as_number->nb_subtract(op1, op2);
+    }
+    calculate_long:
+        {
+            long x;
+            x = a - b;
+            return PyLong_FromLong(x);
+        }
+    calculate_long_long:
+        {
+            PY_LONG_LONG llx;
+            llx = lla - llb;
+            return PyLong_FromLongLong(llx);
+        }
+    
+}
+#endif
+static PyObject* __Pyx_Float___Pyx_PyLong_SubtractObjC(PyObject *float_val, long intval, int zerodivision_check) {
+    CYTHON_UNUSED_VAR(zerodivision_check);
+    const long b = intval;
+    double a = __Pyx_PyFloat_AS_DOUBLE(float_val);
+        double result;
+        
+        result = ((double)a) - (double)b;
+        return PyFloat_FromDouble(result);
+}
+static CYTHON_INLINE PyObject* __Pyx_PyLong_SubtractObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check) {
+    CYTHON_MAYBE_UNUSED_VAR(intval);
+    CYTHON_UNUSED_VAR(zerodivision_check);
+    #if CYTHON_USE_PYLONG_INTERNALS
+    if (likely(PyLong_CheckExact(op1))) {
+        return __Pyx_Unpacked___Pyx_PyLong_SubtractObjC(op1, op2, intval, inplace, zerodivision_check);
+    }
+    #endif
+    if (PyFloat_CheckExact(op1)) {
+        return __Pyx_Float___Pyx_PyLong_SubtractObjC(op1, intval, zerodivision_check);
+    }
+    return __Pyx_Fallback___Pyx_PyLong_SubtractObjC(op1, op2, inplace);
+}
+#endif
+
+/* PyLongCompare */
+static CYTHON_INLINE int __Pyx_PyLong_BoolEqObjC(PyObject *op1, PyObject *op2, long intval, long inplace) {
+    CYTHON_MAYBE_UNUSED_VAR(intval);
+    CYTHON_UNUSED_VAR(inplace);
+    if (op1 == op2) {
+        return 1;
+    }
+    #if CYTHON_USE_PYLONG_INTERNALS
+    if (likely(PyLong_CheckExact(op1))) {
+        int unequal;
+        unsigned long uintval;
+        Py_ssize_t size = __Pyx_PyLong_DigitCount(op1);
+        const digit* digits = __Pyx_PyLong_Digits(op1);
+        if (intval == 0) {
+            return (__Pyx_PyLong_IsZero(op1) == 1);
+        } else if (intval < 0) {
+            if (__Pyx_PyLong_IsNonNeg(op1))
+                return 0;
+            intval = -intval;
+        } else {
+            if (__Pyx_PyLong_IsNeg(op1))
+                return 0;
+        }
+        uintval = (unsigned long) intval;
+#if PyLong_SHIFT * 4 < SIZEOF_LONG*8
+        if (uintval >> (PyLong_SHIFT * 4)) {
+            unequal = (size != 5) || (digits[0] != (uintval & (unsigned long) PyLong_MASK))
+                 | (digits[1] != ((uintval >> (1 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK)) | (digits[2] != ((uintval >> (2 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK)) | (digits[3] != ((uintval >> (3 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK)) | (digits[4] != ((uintval >> (4 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK));
+        } else
+#endif
+#if PyLong_SHIFT * 3 < SIZEOF_LONG*8
+        if (uintval >> (PyLong_SHIFT * 3)) {
+            unequal = (size != 4) || (digits[0] != (uintval & (unsigned long) PyLong_MASK))
+                 | (digits[1] != ((uintval >> (1 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK)) | (digits[2] != ((uintval >> (2 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK)) | (digits[3] != ((uintval >> (3 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK));
+        } else
+#endif
+#if PyLong_SHIFT * 2 < SIZEOF_LONG*8
+        if (uintval >> (PyLong_SHIFT * 2)) {
+            unequal = (size != 3) || (digits[0] != (uintval & (unsigned long) PyLong_MASK))
+                 | (digits[1] != ((uintval >> (1 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK)) | (digits[2] != ((uintval >> (2 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK));
+        } else
+#endif
+#if PyLong_SHIFT * 1 < SIZEOF_LONG*8
+        if (uintval >> (PyLong_SHIFT * 1)) {
+            unequal = (size != 2) || (digits[0] != (uintval & (unsigned long) PyLong_MASK))
+                 | (digits[1] != ((uintval >> (1 * PyLong_SHIFT)) & (unsigned long) PyLong_MASK));
+        } else
+#endif
+            unequal = (size != 1) || (((unsigned long) digits[0]) != (uintval & (unsigned long) PyLong_MASK));
+        return (unequal == 0);
+    }
+    #endif
+    if (PyFloat_CheckExact(op1)) {
+        const long b = intval;
+        double a = __Pyx_PyFloat_AS_DOUBLE(op1);
+        return ((double)a == (double)b);
+    }
+    return __Pyx_PyObject_IsTrueAndDecref(
+        PyObject_RichCompare(op1, op2, Py_EQ));
+}
+
+/* SliceObject */
+static CYTHON_INLINE PyObject* __Pyx_PyObject_GetSlice(PyObject* obj,
+        Py_ssize_t cstart, Py_ssize_t cstop,
+        PyObject** _py_start, PyObject** _py_stop, PyObject** _py_slice,
+        int has_cstart, int has_cstop, CYTHON_UNUSED int wraparound) {
+    __Pyx_TypeName obj_type_name;
+#if CYTHON_USE_TYPE_SLOTS
+    PyMappingMethods* mp = Py_TYPE(obj)->tp_as_mapping;
+    if (likely(mp && mp->mp_subscript))
+#endif
+    {
+        PyObject* result;
+        PyObject *py_slice, *py_start, *py_stop;
+        if (_py_slice) {
+            py_slice = *_py_slice;
+        } else {
+            PyObject* owned_start = NULL;
+            PyObject* owned_stop = NULL;
+            if (_py_start) {
+                py_start = *_py_start;
+            } else {
+                if (has_cstart) {
+                    owned_start = py_start = PyLong_FromSsize_t(cstart);
+                    if (unlikely(!py_start)) goto bad;
+                } else
+                    py_start = Py_None;
+            }
+            if (_py_stop) {
+                py_stop = *_py_stop;
+            } else {
+                if (has_cstop) {
+                    owned_stop = py_stop = PyLong_FromSsize_t(cstop);
+                    if (unlikely(!py_stop)) {
+                        Py_XDECREF(owned_start);
+                        goto bad;
+                    }
+                } else
+                    py_stop = Py_None;
+            }
+            py_slice = PySlice_New(py_start, py_stop, Py_None);
+            Py_XDECREF(owned_start);
+            Py_XDECREF(owned_stop);
+            if (unlikely(!py_slice)) goto bad;
+        }
+#if CYTHON_USE_TYPE_SLOTS
+        result = mp->mp_subscript(obj, py_slice);
+#else
+        result = PyObject_GetItem(obj, py_slice);
+#endif
+        if (!_py_slice) {
+            Py_DECREF(py_slice);
+        }
+        return result;
+    }
+    obj_type_name = __Pyx_PyType_GetFullyQualifiedName(Py_TYPE(obj));
+    PyErr_Format(PyExc_TypeError,
+        "'" __Pyx_FMT_TYPENAME "' object is unsliceable", obj_type_name);
+    __Pyx_DECREF_TypeName(obj_type_name);
+bad:
+    return NULL;
+}
+
+/* CallUnboundCMethod1 */
+#if CYTHON_COMPILING_IN_CPYTHON
+static CYTHON_INLINE PyObject* __Pyx_CallUnboundCMethod1(__Pyx_CachedCFunction* cfunc, PyObject* self, PyObject* arg) {
+    int was_initialized =  __Pyx_CachedCFunction_GetAndSetInitializing(cfunc);
+    if (likely(was_initialized == 2 && cfunc->func)) {
+        int flag = cfunc->flag;
+        if (flag == METH_O) {
+            return __Pyx_CallCFunction(cfunc, self, arg);
+        } else if (flag == METH_FASTCALL) {
+            return __Pyx_CallCFunctionFast(cfunc, self, &arg, 1);
+        } else if (flag == (METH_FASTCALL | METH_KEYWORDS)) {
+            return __Pyx_CallCFunctionFastWithKeywords(cfunc, self, &arg, 1, NULL);
+        }
+    }
+#if CYTHON_COMPILING_IN_CPYTHON_FREETHREADING
+    else if (unlikely(was_initialized == 1)) {
+        __Pyx_CachedCFunction tmp_cfunc = {
+#ifndef __cplusplus
+            0
+#endif
+        };
+        tmp_cfunc.type = cfunc->type;
+        tmp_cfunc.method_name = cfunc->method_name;
+        return __Pyx__CallUnboundCMethod1(&tmp_cfunc, self, arg);
+    }
+#endif
+    PyObject* result = __Pyx__CallUnboundCMethod1(cfunc, self, arg);
+    __Pyx_CachedCFunction_SetFinishedInitializing(cfunc);
+    return result;
+}
+#endif
+static PyObject* __Pyx__CallUnboundCMethod1(__Pyx_CachedCFunction* cfunc, PyObject* self, PyObject* arg){
+    PyObject *result = NULL;
+    if (unlikely(!cfunc->func && !cfunc->method) && unlikely(__Pyx_TryUnpackUnboundCMethod(cfunc) < 0)) return NULL;
+#if CYTHON_COMPILING_IN_CPYTHON
+    if (cfunc->func && (cfunc->flag & METH_VARARGS)) {
+        PyObject *args = PyTuple_New(1);
+        if (unlikely(!args)) return NULL;
+        Py_INCREF(arg);
+        PyTuple_SET_ITEM(args, 0, arg);
+        if (cfunc->flag & METH_KEYWORDS)
+            result = __Pyx_CallCFunctionWithKeywords(cfunc, self, args, NULL);
+        else
+            result = __Pyx_CallCFunction(cfunc, self, args);
+        Py_DECREF(args);
+    } else
+#endif
+    {
+        result = __Pyx_PyObject_Call2Args(cfunc->method, self, arg);
+    }
+    return result;
+}
+
+/* dict_getitem_default */
+static PyObject* __Pyx_PyDict_GetItemDefault(PyObject* d, PyObject* key, PyObject* default_value) {
+    PyObject* value;
+#if !CYTHON_COMPILING_IN_PYPY || PYPY_VERSION_NUM >= 0x07020000
+    value = PyDict_GetItemWithError(d, key);
+    if (unlikely(!value)) {
+        if (unlikely(PyErr_Occurred()))
+            return NULL;
+        value = default_value;
+    }
+    Py_INCREF(value);
+    if ((1));
+#else
+    if (PyBytes_CheckExact(key) || PyUnicode_CheckExact(key) || PyLong_CheckExact(key)) {
+        value = PyDict_GetItem(d, key);
+        if (unlikely(!value)) {
+            value = default_value;
+        }
+        Py_INCREF(value);
+    }
+#endif
+    else {
+        if (default_value == Py_None)
+            value = __Pyx_CallUnboundCMethod1(&__pyx_mstate_global->__pyx_umethod_PyDict_Type_get, d, key);
+        else
+            value = __Pyx_CallUnboundCMethod2(&__pyx_mstate_global->__pyx_umethod_PyDict_Type_get, d, key, default_value);
+    }
+    return value;
+}
 
 /* ArgTypeTestFunc (used by ArgTypeTest) */
 static int __Pyx__ArgTypeTest(PyObject *obj, PyTypeObject *type, const char *name, int exact)
@@ -9415,158 +13397,6 @@ static CYTHON_INLINE PyObject *__Pyx_GetAttr3(PyObject *o, PyObject *n, PyObject
     r = PyObject_GetAttr(o, n);
     return (likely(r)) ? r : __Pyx_GetAttr3Default(d);
 #endif
-}
-
-/* GetModuleGlobalName */
-#if CYTHON_USE_DICT_VERSIONS
-static PyObject *__Pyx__GetModuleGlobalName(PyObject *name, PY_UINT64_T *dict_version, PyObject **dict_cached_value)
-#else
-static CYTHON_INLINE PyObject *__Pyx__GetModuleGlobalName(PyObject *name)
-#endif
-{
-    PyObject *result;
-#if CYTHON_COMPILING_IN_LIMITED_API
-    if (unlikely(!__pyx_m)) {
-        if (!PyErr_Occurred())
-            PyErr_SetNone(PyExc_NameError);
-        return NULL;
-    }
-    result = PyObject_GetAttr(__pyx_m, name);
-    if (likely(result)) {
-        return result;
-    }
-    PyErr_Clear();
-#elif CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS
-    if (unlikely(__Pyx_PyDict_GetItemRef(__pyx_mstate_global->__pyx_d, name, &result) == -1)) PyErr_Clear();
-    __PYX_UPDATE_DICT_CACHE(__pyx_mstate_global->__pyx_d, result, *dict_cached_value, *dict_version)
-    if (likely(result)) {
-        return result;
-    }
-#else
-    result = _PyDict_GetItem_KnownHash(__pyx_mstate_global->__pyx_d, name, ((PyASCIIObject *) name)->hash);
-    __PYX_UPDATE_DICT_CACHE(__pyx_mstate_global->__pyx_d, result, *dict_cached_value, *dict_version)
-    if (likely(result)) {
-        return __Pyx_NewRef(result);
-    }
-    PyErr_Clear();
-#endif
-    return __Pyx_GetBuiltinName(name);
-}
-
-/* PyObjectFastCallMethod */
-#if !CYTHON_VECTORCALL || PY_VERSION_HEX < 0x03090000
-static PyObject *__Pyx_PyObject_FastCallMethod(PyObject *name, PyObject *const *args, size_t nargsf) {
-    PyObject *result;
-    PyObject *attr = PyObject_GetAttr(args[0], name);
-    if (unlikely(!attr))
-        return NULL;
-    result = __Pyx_PyObject_FastCall(attr, args+1, nargsf - 1);
-    Py_DECREF(attr);
-    return result;
-}
-#endif
-
-/* GetItemInt */
-static PyObject *__Pyx_GetItemInt_Generic(PyObject *o, PyObject* j) {
-    PyObject *r;
-    if (unlikely(!j)) return NULL;
-    r = PyObject_GetItem(o, j);
-    Py_DECREF(j);
-    return r;
-}
-static CYTHON_INLINE PyObject *__Pyx_GetItemInt_List_Fast(PyObject *o, Py_ssize_t i,
-                                                              int wraparound, int boundscheck, int unsafe_shared) {
-    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
-#if CYTHON_ASSUME_SAFE_SIZE
-    Py_ssize_t wrapped_i = i;
-    if (wraparound & unlikely(i < 0)) {
-        wrapped_i += PyList_GET_SIZE(o);
-    }
-    if ((CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS || !CYTHON_ASSUME_SAFE_MACROS)) {
-        return __Pyx_PyList_GetItemRefFast(o, wrapped_i, unsafe_shared);
-    } else
-    if ((!boundscheck) || likely(__Pyx_is_valid_index(wrapped_i, PyList_GET_SIZE(o)))) {
-        return __Pyx_NewRef(PyList_GET_ITEM(o, wrapped_i));
-    }
-    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
-#else
-    (void)wraparound;
-    (void)boundscheck;
-    return PySequence_GetItem(o, i);
-#endif
-}
-static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Tuple_Fast(PyObject *o, Py_ssize_t i,
-                                                              int wraparound, int boundscheck, int unsafe_shared) {
-    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
-#if CYTHON_ASSUME_SAFE_SIZE && CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-    Py_ssize_t wrapped_i = i;
-    if (wraparound & unlikely(i < 0)) {
-        wrapped_i += PyTuple_GET_SIZE(o);
-    }
-    if ((!boundscheck) || likely(__Pyx_is_valid_index(wrapped_i, PyTuple_GET_SIZE(o)))) {
-        return __Pyx_NewRef(PyTuple_GET_ITEM(o, wrapped_i));
-    }
-    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
-#else
-    (void)wraparound;
-    (void)boundscheck;
-    return PySequence_GetItem(o, i);
-#endif
-}
-static CYTHON_INLINE PyObject *__Pyx_GetItemInt_Fast(PyObject *o, Py_ssize_t i, int is_list,
-                                                     int wraparound, int boundscheck, int unsafe_shared) {
-    CYTHON_MAYBE_UNUSED_VAR(unsafe_shared);
-#if CYTHON_ASSUME_SAFE_MACROS && CYTHON_ASSUME_SAFE_SIZE
-    if (is_list || PyList_CheckExact(o)) {
-        Py_ssize_t n = ((!wraparound) | likely(i >= 0)) ? i : i + PyList_GET_SIZE(o);
-        if ((CYTHON_AVOID_BORROWED_REFS || CYTHON_AVOID_THREAD_UNSAFE_BORROWED_REFS)) {
-            return __Pyx_PyList_GetItemRefFast(o, n, unsafe_shared);
-        } else if ((!boundscheck) || (likely(__Pyx_is_valid_index(n, PyList_GET_SIZE(o))))) {
-            return __Pyx_NewRef(PyList_GET_ITEM(o, n));
-        }
-    } else
-    #if !CYTHON_AVOID_BORROWED_REFS
-    if (PyTuple_CheckExact(o)) {
-        Py_ssize_t n = ((!wraparound) | likely(i >= 0)) ? i : i + PyTuple_GET_SIZE(o);
-        if ((!boundscheck) || likely(__Pyx_is_valid_index(n, PyTuple_GET_SIZE(o)))) {
-            return __Pyx_NewRef(PyTuple_GET_ITEM(o, n));
-        }
-    } else
-    #endif
-#endif
-#if CYTHON_USE_TYPE_SLOTS && !CYTHON_COMPILING_IN_PYPY
-    {
-        PyMappingMethods *mm = Py_TYPE(o)->tp_as_mapping;
-        PySequenceMethods *sm = Py_TYPE(o)->tp_as_sequence;
-        if (!is_list && mm && mm->mp_subscript) {
-            PyObject *r, *key = PyLong_FromSsize_t(i);
-            if (unlikely(!key)) return NULL;
-            r = mm->mp_subscript(o, key);
-            Py_DECREF(key);
-            return r;
-        }
-        if (is_list || likely(sm && sm->sq_item)) {
-            if (wraparound && unlikely(i < 0) && likely(sm->sq_length)) {
-                Py_ssize_t l = sm->sq_length(o);
-                if (likely(l >= 0)) {
-                    i += l;
-                } else {
-                    if (!PyErr_ExceptionMatches(PyExc_OverflowError))
-                        return NULL;
-                    PyErr_Clear();
-                }
-            }
-            return sm->sq_item(o, i);
-        }
-    }
-#else
-    if (is_list || !PyMapping_Check(o)) {
-        return PySequence_GetItem(o, i);
-    }
-#endif
-    (void)wraparound;
-    (void)boundscheck;
-    return __Pyx_GetItemInt_Generic(o, PyLong_FromSsize_t(i));
 }
 
 /* AllocateExtensionType */
@@ -9748,127 +13578,6 @@ static int __Pyx_fix_up_extension_type_from_spec(PyType_Spec *spec, PyTypeObject
         PyType_Modified(type);
 #endif  // PY_VERSION_HEX > 0x030900B1
     return 0;
-}
-
-/* PyObjectCallNoArg (used by PyObjectCallMethod0) */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_CallNoArg(PyObject *func) {
-    PyObject *arg[2] = {NULL, NULL};
-    return __Pyx_PyObject_FastCall(func, arg + 1, 0 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET);
-}
-
-/* PyObjectGetMethod (used by PyObjectCallMethod0) */
-#if !(CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000)))
-static int __Pyx_PyObject_GetMethod(PyObject *obj, PyObject *name, PyObject **method) {
-    PyObject *attr;
-#if CYTHON_UNPACK_METHODS && CYTHON_COMPILING_IN_CPYTHON && CYTHON_USE_PYTYPE_LOOKUP
-    __Pyx_TypeName type_name;
-    PyTypeObject *tp = Py_TYPE(obj);
-    PyObject *descr;
-    descrgetfunc f = NULL;
-    PyObject **dictptr, *dict;
-    int meth_found = 0;
-    assert (*method == NULL);
-    if (unlikely(tp->tp_getattro != PyObject_GenericGetAttr)) {
-        attr = __Pyx_PyObject_GetAttrStr(obj, name);
-        goto try_unpack;
-    }
-    if (unlikely(tp->tp_dict == NULL) && unlikely(PyType_Ready(tp) < 0)) {
-        return 0;
-    }
-    descr = _PyType_Lookup(tp, name);
-    if (likely(descr != NULL)) {
-        Py_INCREF(descr);
-#if defined(Py_TPFLAGS_METHOD_DESCRIPTOR) && Py_TPFLAGS_METHOD_DESCRIPTOR
-        if (__Pyx_PyType_HasFeature(Py_TYPE(descr), Py_TPFLAGS_METHOD_DESCRIPTOR))
-#else
-        #ifdef __Pyx_CyFunction_USED
-        if (likely(PyFunction_Check(descr) || __Pyx_IS_TYPE(descr, &PyMethodDescr_Type) || __Pyx_CyFunction_Check(descr)))
-        #else
-        if (likely(PyFunction_Check(descr) || __Pyx_IS_TYPE(descr, &PyMethodDescr_Type)))
-        #endif
-#endif
-        {
-            meth_found = 1;
-        } else {
-            f = Py_TYPE(descr)->tp_descr_get;
-            if (f != NULL && PyDescr_IsData(descr)) {
-                attr = f(descr, obj, (PyObject *)Py_TYPE(obj));
-                Py_DECREF(descr);
-                goto try_unpack;
-            }
-        }
-    }
-    dictptr = _PyObject_GetDictPtr(obj);
-    if (dictptr != NULL && (dict = *dictptr) != NULL) {
-        Py_INCREF(dict);
-        attr = __Pyx_PyDict_GetItemStr(dict, name);
-        if (attr != NULL) {
-            Py_INCREF(attr);
-            Py_DECREF(dict);
-            Py_XDECREF(descr);
-            goto try_unpack;
-        }
-        Py_DECREF(dict);
-    }
-    if (meth_found) {
-        *method = descr;
-        return 1;
-    }
-    if (f != NULL) {
-        attr = f(descr, obj, (PyObject *)Py_TYPE(obj));
-        Py_DECREF(descr);
-        goto try_unpack;
-    }
-    if (likely(descr != NULL)) {
-        *method = descr;
-        return 0;
-    }
-    type_name = __Pyx_PyType_GetFullyQualifiedName(tp);
-    PyErr_Format(PyExc_AttributeError,
-                 "'" __Pyx_FMT_TYPENAME "' object has no attribute '%U'",
-                 type_name, name);
-    __Pyx_DECREF_TypeName(type_name);
-    return 0;
-#else
-    attr = __Pyx_PyObject_GetAttrStr(obj, name);
-    goto try_unpack;
-#endif
-try_unpack:
-#if CYTHON_UNPACK_METHODS
-    if (likely(attr) && PyMethod_Check(attr) && likely(PyMethod_GET_SELF(attr) == obj)) {
-        PyObject *function = PyMethod_GET_FUNCTION(attr);
-        Py_INCREF(function);
-        Py_DECREF(attr);
-        *method = function;
-        return 1;
-    }
-#endif
-    *method = attr;
-    return 0;
-}
-#endif
-
-/* PyObjectCallMethod0 (used by PyType_Ready) */
-static PyObject* __Pyx_PyObject_CallMethod0(PyObject* obj, PyObject* method_name) {
-#if CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000))
-    PyObject *args[1] = {obj};
-    (void) __Pyx_PyObject_CallOneArg;
-    (void) __Pyx_PyObject_CallNoArg;
-    return PyObject_VectorcallMethod(method_name, args, 1 | PY_VECTORCALL_ARGUMENTS_OFFSET, NULL);
-#else
-    PyObject *method = NULL, *result = NULL;
-    int is_method = __Pyx_PyObject_GetMethod(obj, method_name, &method);
-    if (likely(is_method)) {
-        result = __Pyx_PyObject_CallOneArg(method, obj);
-        Py_DECREF(method);
-        return result;
-    }
-    if (unlikely(!method)) goto bad;
-    result = __Pyx_PyObject_CallNoArg(method);
-    Py_DECREF(method);
-bad:
-    return result;
-#endif
 }
 
 /* ValidateBasesTuple (used by PyType_Ready) */
@@ -12829,39 +16538,6 @@ static CYTHON_INLINE PyObject* __Pyx_PyLong_From_long(long value) {
         return result;
 #endif
     }
-}
-
-/* PyObjectCall2Args */
-static CYTHON_INLINE PyObject* __Pyx_PyObject_Call2Args(PyObject* function, PyObject* arg1, PyObject* arg2) {
-    PyObject *args[3] = {NULL, arg1, arg2};
-    return __Pyx_PyObject_FastCall(function, args+1, 2 | __Pyx_PY_VECTORCALL_ARGUMENTS_OFFSET);
-}
-
-/* PyObjectCallMethod1 */
-#if !(CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000)))
-static PyObject* __Pyx__PyObject_CallMethod1(PyObject* method, PyObject* arg) {
-    PyObject *result = __Pyx_PyObject_CallOneArg(method, arg);
-    Py_DECREF(method);
-    return result;
-}
-#endif
-static PyObject* __Pyx_PyObject_CallMethod1(PyObject* obj, PyObject* method_name, PyObject* arg) {
-#if CYTHON_VECTORCALL && (__PYX_LIMITED_VERSION_HEX >= 0x030C0000 || (!CYTHON_COMPILING_IN_LIMITED_API && PY_VERSION_HEX >= 0x03090000))
-    PyObject *args[2] = {obj, arg};
-    (void) __Pyx_PyObject_CallOneArg;
-    (void) __Pyx_PyObject_Call2Args;
-    return PyObject_VectorcallMethod(method_name, args, 2 | PY_VECTORCALL_ARGUMENTS_OFFSET, NULL);
-#else
-    PyObject *method = NULL, *result;
-    int is_method = __Pyx_PyObject_GetMethod(obj, method_name, &method);
-    if (likely(is_method)) {
-        result = __Pyx_PyObject_Call2Args(method, obj, arg);
-        Py_DECREF(method);
-        return result;
-    }
-    if (unlikely(!method)) return NULL;
-    return __Pyx__PyObject_CallMethod1(method, arg);
-#endif
 }
 
 /* UpdateUnpickledDict */
