@@ -12,6 +12,10 @@ function Docentes() {
   const [showForm, setShowForm] = useState(false);
   const [editingDocente, setEditingDocente] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [puedeEliminar, setPuedeEliminar] = useState(true);
+  const [minimoMaestros, setMinimoMaestros] = useState(40);
+  const [maestrosPorGrupoExtra, setMaestrosPorGrupoExtra] = useState(3);
+  const [mensajeGrupos, setMensajeGrupos] = useState("");
 
   const fetchMaestros = async () => {
     setLoading(true);
@@ -20,6 +24,10 @@ function Docentes() {
       const data = await response.json();
       if (response.ok) {
         setMaestros(data.maestros || []);
+        setPuedeEliminar(data.puede_eliminar ?? true);
+        setMinimoMaestros(data.minimo_maestros ?? 40);
+        setMaestrosPorGrupoExtra(data.maestros_por_grupo_extra ?? 3);
+        setMensajeGrupos(data.mensaje_grupos ?? "");
       }
     } catch (err) {
       console.error("Error al cargar maestros:", err);
@@ -46,6 +54,13 @@ function Docentes() {
   };
 
   const handleDelete = async (docenteId) => {
+    if (!puedeEliminar) {
+      alert(
+        `No se puede eliminar. Se requiere un mínimo de ${minimoMaestros} maestros para cubrir todos los horarios.`
+      );
+      return;
+    }
+
     if (!window.confirm("¿Está seguro de eliminar este docente?")) {
       return;
     }
@@ -126,6 +141,47 @@ function Docentes() {
           /* Lista de docentes - solo se muestra cuando no hay formulario */
           <div className="docentes-list-section">
             <h2>Docentes Registrados ({maestros.length})</h2>
+
+            {/* Información sobre grupos y maestros necesarios */}
+            <div
+              className="info-message"
+              style={{
+                backgroundColor: "#d1ecf1",
+                color: "#0c5460",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                marginBottom: "16px",
+                border: "1px solid #bee5eb",
+              }}
+            >
+              <strong>Información de capacidad:</strong>
+              <br />- Mínimo requerido:{" "}
+              <strong>{minimoMaestros} maestros</strong> para 2 grupos por
+              cuatrimestre
+              <br />- Para agregar <strong>1 grupo extra</strong> a un
+              cuatrimestre: necesitas aproximadamente{" "}
+              <strong>{maestrosPorGrupoExtra} maestros adicionales</strong>
+              <br />- Actualmente tienes:{" "}
+              <strong>{maestros.length} maestros</strong>
+            </div>
+
+            {!puedeEliminar && (
+              <div
+                className="warning-message"
+                style={{
+                  backgroundColor: "#fff3cd",
+                  color: "#856404",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  marginBottom: "16px",
+                  border: "1px solid #ffeeba",
+                }}
+              >
+                Se requiere un mínimo de {minimoMaestros} maestros para cubrir
+                todos los horarios. No es posible eliminar docentes en este
+                momento.
+              </div>
+            )}
             {loading ? (
               <div className="loading">Cargando docentes...</div>
             ) : maestros.length === 0 ? (
@@ -141,6 +197,7 @@ function Docentes() {
                     docente={maestro}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    puedeEliminar={puedeEliminar}
                   />
                 ))}
               </div>

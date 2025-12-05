@@ -15,8 +15,10 @@ function GenerarHorario() {
     plan_id: "",
     maestro_ids: [],
     turno: "Matutino",
-    grupos_generar: 1,
+    grupos_default: 2, // Valor por defecto para todos los cuatrimestres
   });
+  const [gruposPorCuatri, setGruposPorCuatri] = useState({}); // {1: 2, 2: 3, 3: 2, ...}
+  const [modoPersonalizado, setModoPersonalizado] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [horarioGenerado, setHorarioGenerado] = useState(null);
@@ -87,6 +89,38 @@ function GenerarHorario() {
     return cuatrimestres;
   };
 
+  // Inicializar grupos por cuatrimestre cuando cambia el plan
+  useEffect(() => {
+    const cuatrimestres = getCuatrimestresAGenerar();
+    if (cuatrimestres.length > 0) {
+      const gruposIniciales = {};
+      cuatrimestres.forEach((c) => {
+        gruposIniciales[c] = formData.grupos_default;
+      });
+      setGruposPorCuatri(gruposIniciales);
+    }
+  }, [formData.plan_id, formData.grupos_default]);
+
+  // Cambiar grupos de un cuatrimestre específico
+  const handleGruposCuatriChange = (cuatrimestre, valor) => {
+    setGruposPorCuatri((prev) => ({
+      ...prev,
+      [cuatrimestre]: parseInt(valor) || 1,
+    }));
+  };
+
+  // Calcular total de grupos
+  const getTotalGrupos = () => {
+    const cuatrimestres = getCuatrimestresAGenerar();
+    if (modoPersonalizado) {
+      return cuatrimestres.reduce(
+        (sum, c) => sum + (gruposPorCuatri[c] || formData.grupos_default),
+        0
+      );
+    }
+    return cuatrimestres.length * formData.grupos_default;
+  };
+
   const handleGenerar = async (e) => {
     e.preventDefault();
 
@@ -110,7 +144,8 @@ function GenerarHorario() {
       const requestBody = {
         plan_id: parseInt(formData.plan_id),
         maestro_ids: formData.maestro_ids.map((id) => parseInt(id)),
-        grupos_generar: parseInt(formData.grupos_generar),
+        grupos_generar: parseInt(formData.grupos_default),
+        grupos_por_cuatrimestre: modoPersonalizado ? gruposPorCuatri : {},
         turno: formData.turno,
       };
 
@@ -231,12 +266,12 @@ function GenerarHorario() {
               </div>
 
               <div className="form-group">
-                <label htmlFor="grupos_generar">Grupos por Cuatrimestre</label>
+                <label htmlFor="grupos_default">Grupos por Cuatrimestre</label>
                 <input
                   type="number"
-                  id="grupos_generar"
-                  name="grupos_generar"
-                  value={formData.grupos_generar}
+                  id="grupos_default"
+                  name="grupos_default"
+                  value={formData.grupos_default}
                   onChange={handleChange}
                   min="1"
                   max="10"
@@ -246,24 +281,69 @@ function GenerarHorario() {
               </div>
             </div>
 
+            {/* Toggle para modo personalizado */}
+            {planSeleccionado && (
+              <div className="modo-personalizado-toggle">
+                <label className="toggle-label">
+                  <input
+                    type="checkbox"
+                    checked={modoPersonalizado}
+                    onChange={(e) => setModoPersonalizado(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <span className="toggle-text">
+                    Personalizar grupos por cuatrimestre
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {/* Selector de grupos por cuatrimestre */}
+            {planSeleccionado && modoPersonalizado && (
+              <div className="grupos-por-cuatri-container">
+                <h4>Grupos por cada cuatrimestre:</h4>
+                <div className="grupos-grid">
+                  {getCuatrimestresAGenerar().map((cuatri) => (
+                    <div key={cuatri} className="grupo-cuatri-item">
+                      <label>Cuatri {cuatri}:</label>
+                      <input
+                        type="number"
+                        value={
+                          gruposPorCuatri[cuatri] || formData.grupos_default
+                        }
+                        onChange={(e) =>
+                          handleGruposCuatriChange(cuatri, e.target.value)
+                        }
+                        min="1"
+                        max="10"
+                        disabled={loading}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {planSeleccionado && (
               <div className="preview-grupos">
                 <small>
-                  Se generaran{" "}
-                  {getCuatrimestresAGenerar().length * formData.grupos_generar}{" "}
-                  grupos en total:
-                  {getCuatrimestresAGenerar()
-                    .slice(0, 3)
-                    .map((c) => (
-                      <span key={c}>
-                        {" "}
-                        {planSeleccionado.nombre} {c}-1
-                        {formData.grupos_generar > 1
-                          ? ` a ${c}-${formData.grupos_generar}`
-                          : ""}
-                      </span>
-                    ))}
-                  {getCuatrimestresAGenerar().length > 3 && " ..."}
+                  Se generarán <strong>{getTotalGrupos()}</strong> grupos en
+                  total
+                  {modoPersonalizado && (
+                    <span className="grupos-detalle">
+                      {" "}
+                      (
+                      {getCuatrimestresAGenerar()
+                        .map(
+                          (c) =>
+                            `C${c}: ${
+                              gruposPorCuatri[c] || formData.grupos_default
+                            }`
+                        )
+                        .join(", ")}
+                      )
+                    </span>
+                  )}
                 </small>
               </div>
             )}

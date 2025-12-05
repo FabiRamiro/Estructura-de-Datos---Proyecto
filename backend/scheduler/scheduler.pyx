@@ -27,7 +27,7 @@ cdef class SchedulerEngine:
     cdef int num_grupos
     cdef int[5][14][100] ocupacion_maestros  # [dia][hora_slot][maestro_id] = 1 si ocupado
     cdef int[5][14][100] ocupacion_grupos    # [dia][hora_slot][grupo_id] = 1 si ocupado
-    cdef int[100][5] horas_maestro_dia       # [maestro_id][dia] = horas usadas ese día
+    cdef int[100] horas_maestro_semana       # [maestro_id] = horas totales usadas en la semana
     cdef int hora_min
     cdef int hora_max
 
@@ -42,7 +42,7 @@ cdef class SchedulerEngine:
         # Inicializar matrices en 0
         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
-        memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))
+        memset(self.horas_maestro_semana, 0, sizeof(self.horas_maestro_semana))
 
         # Inicializar semilla random
         srand(time(NULL))
@@ -102,9 +102,9 @@ cdef class SchedulerEngine:
             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
-        # Actualizar contador de horas del maestro en ese día
+        # Actualizar contador de horas semanales del maestro
         if maestro_id < 100:
-            self.horas_maestro_dia[maestro_id][dia] += duracion
+            self.horas_maestro_semana[maestro_id] += duracion
     
     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):
         """
@@ -305,17 +305,17 @@ cdef class SchedulerEngine:
                     
                     maestro_id = maestro['id']
                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
-                    horas_max_maestro = maestro.get('horas_max_dia', 8)
+                    horas_max_semana = maestro.get('horas_max_semana', 15)  # 15 horas máximo por semana
                     
                     # Verificar si el maestro puede dar clase este día
                     if dia not in dias_disponibles:
                         continue
                     
-                    # Verificar horas máximas del maestro en este día
-                    horas_usadas = 0
+                    # Verificar horas máximas semanales del maestro
+                    horas_usadas_semana = 0
                     if maestro_id < 100:
-                        horas_usadas = self.horas_maestro_dia[maestro_id][dia]
-                    if horas_usadas + duracion > horas_max_maestro:
+                        horas_usadas_semana = self.horas_maestro_semana[maestro_id]
+                    if horas_usadas_semana + duracion > horas_max_semana:
                         continue
                     
                     hora_fin = hora_actual + duracion

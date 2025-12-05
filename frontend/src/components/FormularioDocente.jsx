@@ -8,7 +8,7 @@ function FormularioDocente({ onDocenteAdded, docenteToEdit, onCancel }) {
     nombre: "",
     email: "",
     numero: "",
-    horas_max_dia: "",
+    horas_max_semana: "",
     materia_ids: [],
     dias_disponibles: [],
   });
@@ -34,7 +34,7 @@ function FormularioDocente({ onDocenteAdded, docenteToEdit, onCancel }) {
         nombre: docenteToEdit.nombre || "",
         email: docenteToEdit.email || "",
         numero: docenteToEdit.numero || "",
-        horas_max_dia: docenteToEdit.horas_max_dia || "",
+        horas_max_semana: docenteToEdit.horas_max_semana || "",
         materia_ids: docenteToEdit.materias?.map((m) => m.id) || [],
         dias_disponibles: docenteToEdit.dias_disponibles || [],
       });
@@ -111,7 +111,7 @@ function FormularioDocente({ onDocenteAdded, docenteToEdit, onCancel }) {
           nombre: formData.nombre,
           email: formData.email,
           numero: formData.numero,
-          horas_max_dia: parseInt(formData.horas_max_dia),
+          horas_max_semana: parseInt(formData.horas_max_semana),
           materia_ids: formData.materia_ids,
           dias_disponibles: formData.dias_disponibles,
         }),
@@ -129,7 +129,7 @@ function FormularioDocente({ onDocenteAdded, docenteToEdit, onCancel }) {
           nombre: "",
           email: "",
           numero: "",
-          horas_max_dia: "",
+          horas_max_semana: "",
           materia_ids: [],
           dias_disponibles: [],
         });
@@ -198,15 +198,17 @@ function FormularioDocente({ onDocenteAdded, docenteToEdit, onCancel }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="horas_max_dia">Horas Disponibles por Día</label>
+          <label htmlFor="horas_max_semana">
+            Horas Disponibles por Semana (máx 15)
+          </label>
           <input
             type="number"
-            id="horas_max_dia"
-            name="horas_max_dia"
-            value={formData.horas_max_dia}
+            id="horas_max_semana"
+            name="horas_max_semana"
+            value={formData.horas_max_semana}
             onChange={handleChange}
             min="1"
-            max="12"
+            max="15"
             required
             disabled={loading}
           />

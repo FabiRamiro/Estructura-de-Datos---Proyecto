@@ -1,6 +1,6 @@
 import "./DocenteCard.css";
 
-function DocenteCard({ docente, onEdit, onDelete }) {
+function DocenteCard({ docente, onEdit, onDelete, puedeEliminar = true }) {
   const diasSemana = ["Lun", "Mar", "Mie", "Jue", "Vie"];
 
   return (
@@ -23,9 +23,17 @@ function DocenteCard({ docente, onEdit, onDelete }) {
           Editar
         </button>
         <button
-          className="btn-action btn-delete"
+          className={`btn-action btn-delete ${
+            !puedeEliminar ? "disabled" : ""
+          }`}
           onClick={() => onDelete(docente.id)}
-          title="Eliminar docente"
+          title={
+            puedeEliminar
+              ? "Eliminar docente"
+              : "No se puede eliminar - mínimo de maestros requerido"
+          }
+          disabled={!puedeEliminar}
+          style={!puedeEliminar ? { opacity: 0.5, cursor: "not-allowed" } : {}}
         >
           Eliminar
         </button>
@@ -38,8 +46,8 @@ function DocenteCard({ docente, onEdit, onDelete }) {
         </div>
 
         <div className="docente-info">
-          <span className="info-label">Horas/día</span>
-          <span className="info-value">{docente.horas_max_dia}hrs</span>
+          <span className="info-label">Horas/semana</span>
+          <span className="info-value">{docente.horas_max_semana}hrs</span>
         </div>
 
         {docente.materias && docente.materias.length > 0 && (

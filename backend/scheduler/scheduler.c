@@ -1554,7 +1554,7 @@ struct __pyx_obj_9scheduler_SchedulerEngine {
   int num_grupos;
   int ocupacion_maestros[5][14][100];
   int ocupacion_grupos[5][14][100];
-  int horas_maestro_dia[100][5];
+  int horas_maestro_semana[100];
   int hora_min;
   int hora_max;
 };
@@ -2593,10 +2593,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
 static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(struct __pyx_obj_9scheduler_SchedulerEngine *, PyObject *); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int(int *, Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int(int *, Py_ssize_t); /*proto*/
-static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_5_5d_(int (*)[5], Py_ssize_t); /*proto*/
-static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_5_5d_(int (*)[5], Py_ssize_t); /*proto*/
 static int __Pyx_carray_from_py_int(PyObject *, int *, Py_ssize_t); /*proto*/
-static int __Pyx_carray_from_py_int___5b_5_5d_(PyObject *, int (*)[5], Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_100_5d_(int (*)[100], Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_100_5d_(int (*)[100], Py_ssize_t); /*proto*/
 static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_14_5d__5b_100_5d_(int (*)[14][100], Py_ssize_t); /*proto*/
@@ -2728,7 +2725,7 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_hora_min __pyx_string_tab[34]
 #define __pyx_n_u_horas __pyx_string_tab[35]
 #define __pyx_n_u_horas_asignadas __pyx_string_tab[36]
-#define __pyx_n_u_horas_max_dia __pyx_string_tab[37]
+#define __pyx_n_u_horas_max_semana __pyx_string_tab[37]
 #define __pyx_n_u_horas_semanales __pyx_string_tab[38]
 #define __pyx_n_u_id __pyx_string_tab[39]
 #define __pyx_n_u_is_coroutine __pyx_string_tab[40]
@@ -2770,7 +2767,7 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_n_u_values __pyx_string_tab[76]
 #define __pyx_kp_b_iso88591_A_r_QoROaab_q_Kq_wd_1_a_gQ_q_A_q __pyx_string_tab[77]
 #define __pyx_kp_b_iso88591_QfA __pyx_string_tab[78]
-#define __pyx_kp_b_iso88591_T_D_4_C4_TXXggkkzz_R_R_V_V_W_G1 __pyx_string_tab[79]
+#define __pyx_kp_b_iso88591_T_D_4_Fd_W_jjnn_B_B_U_U_Y_Y_Z_G __pyx_string_tab[79]
 #define __pyx_kp_b_iso88591_q_0_kQR_1_7_1_2DNRS_1 __pyx_string_tab[80]
 #define __pyx_int_0 __pyx_number_tab[0]
 #define __pyx_int_neg_1 __pyx_number_tab[1]
@@ -2778,9 +2775,9 @@ static __pyx_mstatetype * const __pyx_mstate_global = &__pyx_mstate_global_stati
 #define __pyx_int_2 __pyx_number_tab[3]
 #define __pyx_int_3 __pyx_number_tab[4]
 #define __pyx_int_4 __pyx_number_tab[5]
-#define __pyx_int_8 __pyx_number_tab[6]
+#define __pyx_int_15 __pyx_number_tab[6]
 #define __pyx_int_100 __pyx_number_tab[7]
-#define __pyx_int_168994040 __pyx_number_tab[8]
+#define __pyx_int_129274947 __pyx_number_tab[8]
 /* #### Code section: module_state_clear ### */
 #if CYTHON_USE_MODULE_STATE
 static CYTHON_SMALL_CODE int __pyx_m_clear(PyObject *m) {
@@ -3056,227 +3053,6 @@ static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int(int *__pyx_v_v, Py_ssiz
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_value);
-  __Pyx_XDECREF(__pyx_v_t);
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "carray.to_py":113
- * 
- * 
- * @cname("__Pyx_carray_to_py_int___5b_5_5d_")             # <<<<<<<<<<<<<<
- * cdef inline list __Pyx_carray_to_py_int___5b_5_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-static CYTHON_INLINE PyObject *__Pyx_carray_to_py_int___5b_5_5d_(int (*__pyx_v_v)[5], Py_ssize_t __pyx_v_length) {
-  Py_ssize_t __pyx_v_i;
-  PyObject *__pyx_v_value = 0;
-  PyObject *__pyx_v_l = NULL;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  Py_ssize_t __pyx_t_2;
-  Py_ssize_t __pyx_t_3;
-  Py_ssize_t __pyx_t_4;
-  int __pyx_t_5;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_to_py_int___5b_5_5d_", 0);
-
-  /* "carray.to_py":117
- *     cdef Py_ssize_t i
- *     cdef object value
- *     l = PyList_New(length)             # <<<<<<<<<<<<<<
- *     for i in range(length):
- *         value = v[<size_t> i]
-*/
-  __pyx_t_1 = PyList_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 117, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_v_l = ((PyObject*)__pyx_t_1);
-  __pyx_t_1 = 0;
-
-  /* "carray.to_py":118
- *     cdef object value
- *     l = PyList_New(length)
- *     for i in range(length):             # <<<<<<<<<<<<<<
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
-*/
-  __pyx_t_2 = __pyx_v_length;
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-
-    /* "carray.to_py":119
- *     l = PyList_New(length)
- *     for i in range(length):
- *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
- *         Py_INCREF(value)
- *         __Pyx_PyList_SET_ITEM(l, i, value)
-*/
-    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 5); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 119, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
-    __pyx_t_1 = 0;
-
-    /* "carray.to_py":120
- *     for i in range(length):
- *         value = v[<size_t> i]
- *         Py_INCREF(value)             # <<<<<<<<<<<<<<
- *         __Pyx_PyList_SET_ITEM(l, i, value)
- *     return l
-*/
-    Py_INCREF(__pyx_v_value);
-
-    /* "carray.to_py":121
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
- *         __Pyx_PyList_SET_ITEM(l, i, value)             # <<<<<<<<<<<<<<
- *     return l
- * 
-*/
-    __pyx_t_5 = __Pyx_PyList_SET_ITEM(__pyx_v_l, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 121, __pyx_L1_error)
-  }
-
-  /* "carray.to_py":122
- *         Py_INCREF(value)
- *         __Pyx_PyList_SET_ITEM(l, i, value)
- *     return l             # <<<<<<<<<<<<<<
- * 
- * 
-*/
-  __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_v_l);
-  __pyx_r = __pyx_v_l;
-  goto __pyx_L0;
-
-  /* "carray.to_py":113
- * 
- * 
- * @cname("__Pyx_carray_to_py_int___5b_5_5d_")             # <<<<<<<<<<<<<<
- * cdef inline list __Pyx_carray_to_py_int___5b_5_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_py_int___5b_5_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_value);
-  __Pyx_XDECREF(__pyx_v_l);
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "carray.to_py":125
- * 
- * 
- * @cname("__Pyx_carray_to_tuple_int___5b_5_5d_")             # <<<<<<<<<<<<<<
- * cdef inline tuple __Pyx_carray_to_tuple_int___5b_5_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-static CYTHON_INLINE PyObject *__Pyx_carray_to_tuple_int___5b_5_5d_(int (*__pyx_v_v)[5], Py_ssize_t __pyx_v_length) {
-  Py_ssize_t __pyx_v_i;
-  PyObject *__pyx_v_value = 0;
-  PyObject *__pyx_v_t = NULL;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  Py_ssize_t __pyx_t_2;
-  Py_ssize_t __pyx_t_3;
-  Py_ssize_t __pyx_t_4;
-  int __pyx_t_5;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_to_tuple_int___5b_5_5d_", 0);
-
-  /* "carray.to_py":129
- *     cdef Py_ssize_t i
- *     cdef object value
- *     t = PyTuple_New(length)             # <<<<<<<<<<<<<<
- *     for i in range(length):
- *         value = v[<size_t> i]
-*/
-  __pyx_t_1 = PyTuple_New(__pyx_v_length); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 129, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_v_t = ((PyObject*)__pyx_t_1);
-  __pyx_t_1 = 0;
-
-  /* "carray.to_py":130
- *     cdef object value
- *     t = PyTuple_New(length)
- *     for i in range(length):             # <<<<<<<<<<<<<<
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
-*/
-  __pyx_t_2 = __pyx_v_length;
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-
-    /* "carray.to_py":131
- *     t = PyTuple_New(length)
- *     for i in range(length):
- *         value = v[<size_t> i]             # <<<<<<<<<<<<<<
- *         Py_INCREF(value)
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)
-*/
-    __pyx_t_1 = __Pyx_carray_to_py_int((__pyx_v_v[((size_t)__pyx_v_i)]), 5); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 131, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_XDECREF_SET(__pyx_v_value, __pyx_t_1);
-    __pyx_t_1 = 0;
-
-    /* "carray.to_py":132
- *     for i in range(length):
- *         value = v[<size_t> i]
- *         Py_INCREF(value)             # <<<<<<<<<<<<<<
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)
- *     return t
-*/
-    Py_INCREF(__pyx_v_value);
-
-    /* "carray.to_py":133
- *         value = v[<size_t> i]
- *         Py_INCREF(value)
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)             # <<<<<<<<<<<<<<
- *     return t
-*/
-    __pyx_t_5 = __Pyx_PyTuple_SET_ITEM(__pyx_v_t, __pyx_v_i, __pyx_v_value); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 133, __pyx_L1_error)
-  }
-
-  /* "carray.to_py":134
- *         Py_INCREF(value)
- *         __Pyx_PyTuple_SET_ITEM(t, i, value)
- *     return t             # <<<<<<<<<<<<<<
-*/
-  __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_v_t);
-  __pyx_r = __pyx_v_t;
-  goto __pyx_L0;
-
-  /* "carray.to_py":125
- * 
- * 
- * @cname("__Pyx_carray_to_tuple_int___5b_5_5d_")             # <<<<<<<<<<<<<<
- * cdef inline tuple __Pyx_carray_to_tuple_int___5b_5_5d_(base_type *v, Py_ssize_t length):
- *     cdef Py_ssize_t i
-*/
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_AddTraceback("carray.to_py.__Pyx_carray_to_tuple_int___5b_5_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_value);
@@ -3614,334 +3390,6 @@ static int __Pyx_carray_from_py_int(PyObject *__pyx_v_o, int *__pyx_v_v, Py_ssiz
   __Pyx_XDECREF(__pyx_t_7);
   __Pyx_XDECREF(__pyx_t_10);
   __Pyx_AddTraceback("carray.from_py.__Pyx_carray_from_py_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = -1;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_item);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-static int __Pyx_carray_from_py_int___5b_5_5d_(PyObject *__pyx_v_o, int (*__pyx_v_v)[5], Py_ssize_t __pyx_v_length) {
-  Py_ssize_t __pyx_v_i;
-  PyObject *__pyx_v_item = NULL;
-  int __pyx_r;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  PyObject *__pyx_t_2 = NULL;
-  PyObject *__pyx_t_3 = NULL;
-  Py_ssize_t __pyx_t_4;
-  int __pyx_t_5;
-  int __pyx_t_6;
-  PyObject *__pyx_t_7 = NULL;
-  Py_ssize_t __pyx_t_8;
-  PyObject *(*__pyx_t_9)(PyObject *);
-  PyObject *__pyx_t_10 = NULL;
-  int __pyx_t_11[5];
-  char const *__pyx_t_12;
-  int __pyx_lineno = 0;
-  const char *__pyx_filename = NULL;
-  int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("__Pyx_carray_from_py_int___5b_5_5d_", 0);
-
-  /* "carray.from_py":80
- * @cname("__Pyx_carray_from_py_int___5b_5_5d_")
- * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
- *     cdef Py_ssize_t i = length             # <<<<<<<<<<<<<<
- *     try:
- *         i = len(o)
-*/
-  __pyx_v_i = __pyx_v_length;
-
-  /* "carray.from_py":81
- * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
- *     cdef Py_ssize_t i = length
- *     try:             # <<<<<<<<<<<<<<
- *         i = len(o)
- *     except (TypeError, OverflowError):
-*/
-  {
-    __Pyx_PyThreadState_declare
-    __Pyx_PyThreadState_assign
-    __Pyx_ExceptionSave(&__pyx_t_1, &__pyx_t_2, &__pyx_t_3);
-    __Pyx_XGOTREF(__pyx_t_1);
-    __Pyx_XGOTREF(__pyx_t_2);
-    __Pyx_XGOTREF(__pyx_t_3);
-    /*try:*/ {
-
-      /* "carray.from_py":82
- *     cdef Py_ssize_t i = length
- *     try:
- *         i = len(o)             # <<<<<<<<<<<<<<
- *     except (TypeError, OverflowError):
- *         pass
-*/
-      __pyx_t_4 = PyObject_Length(__pyx_v_o); if (unlikely(__pyx_t_4 == ((Py_ssize_t)-1))) __PYX_ERR(1, 82, __pyx_L3_error)
-      __pyx_v_i = __pyx_t_4;
-
-      /* "carray.from_py":81
- * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
- *     cdef Py_ssize_t i = length
- *     try:             # <<<<<<<<<<<<<<
- *         i = len(o)
- *     except (TypeError, OverflowError):
-*/
-    }
-    __Pyx_XDECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __Pyx_XDECREF(__pyx_t_2); __pyx_t_2 = 0;
-    __Pyx_XDECREF(__pyx_t_3); __pyx_t_3 = 0;
-    goto __pyx_L8_try_end;
-    __pyx_L3_error:;
-
-    /* "carray.from_py":83
- *     try:
- *         i = len(o)
- *     except (TypeError, OverflowError):             # <<<<<<<<<<<<<<
- *         pass
- *     if i == length:
-*/
-    __pyx_t_5 = __Pyx_PyErr_ExceptionMatches2(((PyObject *)(((PyTypeObject*)PyExc_TypeError))), ((PyObject *)(((PyTypeObject*)PyExc_OverflowError))));
-    if (__pyx_t_5) {
-      __Pyx_ErrRestore(0,0,0);
-      goto __pyx_L4_exception_handled;
-    }
-    goto __pyx_L5_except_error;
-
-    /* "carray.from_py":81
- * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
- *     cdef Py_ssize_t i = length
- *     try:             # <<<<<<<<<<<<<<
- *         i = len(o)
- *     except (TypeError, OverflowError):
-*/
-    __pyx_L5_except_error:;
-    __Pyx_XGIVEREF(__pyx_t_1);
-    __Pyx_XGIVEREF(__pyx_t_2);
-    __Pyx_XGIVEREF(__pyx_t_3);
-    __Pyx_ExceptionReset(__pyx_t_1, __pyx_t_2, __pyx_t_3);
-    goto __pyx_L1_error;
-    __pyx_L4_exception_handled:;
-    __Pyx_XGIVEREF(__pyx_t_1);
-    __Pyx_XGIVEREF(__pyx_t_2);
-    __Pyx_XGIVEREF(__pyx_t_3);
-    __Pyx_ExceptionReset(__pyx_t_1, __pyx_t_2, __pyx_t_3);
-    __pyx_L8_try_end:;
-  }
-
-  /* "carray.from_py":85
- *     except (TypeError, OverflowError):
- *         pass
- *     if i == length:             # <<<<<<<<<<<<<<
- *         for i, item in enumerate(o):
- *             if i >= length:
-*/
-  __pyx_t_6 = (__pyx_v_i == __pyx_v_length);
-  if (__pyx_t_6) {
-
-    /* "carray.from_py":86
- *         pass
- *     if i == length:
- *         for i, item in enumerate(o):             # <<<<<<<<<<<<<<
- *             if i >= length:
- *                 break
-*/
-    __pyx_t_4 = 0;
-    if (likely(PyList_CheckExact(__pyx_v_o)) || PyTuple_CheckExact(__pyx_v_o)) {
-      __pyx_t_7 = __pyx_v_o; __Pyx_INCREF(__pyx_t_7);
-      __pyx_t_8 = 0;
-      __pyx_t_9 = NULL;
-    } else {
-      __pyx_t_8 = -1; __pyx_t_7 = PyObject_GetIter(__pyx_v_o); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 86, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_7);
-      __pyx_t_9 = (CYTHON_COMPILING_IN_LIMITED_API) ? PyIter_Next : __Pyx_PyObject_GetIterNextFunc(__pyx_t_7); if (unlikely(!__pyx_t_9)) __PYX_ERR(1, 86, __pyx_L1_error)
-    }
-    for (;;) {
-      if (likely(!__pyx_t_9)) {
-        if (likely(PyList_CheckExact(__pyx_t_7))) {
-          {
-            Py_ssize_t __pyx_temp = __Pyx_PyList_GET_SIZE(__pyx_t_7);
-            #if !CYTHON_ASSUME_SAFE_SIZE
-            if (unlikely((__pyx_temp < 0))) __PYX_ERR(1, 86, __pyx_L1_error)
-            #endif
-            if (__pyx_t_8 >= __pyx_temp) break;
-          }
-          __pyx_t_10 = __Pyx_PyList_GetItemRefFast(__pyx_t_7, __pyx_t_8, __Pyx_ReferenceSharing_OwnStrongReference);
-          ++__pyx_t_8;
-        } else {
-          {
-            Py_ssize_t __pyx_temp = __Pyx_PyTuple_GET_SIZE(__pyx_t_7);
-            #if !CYTHON_ASSUME_SAFE_SIZE
-            if (unlikely((__pyx_temp < 0))) __PYX_ERR(1, 86, __pyx_L1_error)
-            #endif
-            if (__pyx_t_8 >= __pyx_temp) break;
-          }
-          #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-          __pyx_t_10 = __Pyx_NewRef(PyTuple_GET_ITEM(__pyx_t_7, __pyx_t_8));
-          #else
-          __pyx_t_10 = __Pyx_PySequence_ITEM(__pyx_t_7, __pyx_t_8);
-          #endif
-          ++__pyx_t_8;
-        }
-        if (unlikely(!__pyx_t_10)) __PYX_ERR(1, 86, __pyx_L1_error)
-      } else {
-        __pyx_t_10 = __pyx_t_9(__pyx_t_7);
-        if (unlikely(!__pyx_t_10)) {
-          PyObject* exc_type = PyErr_Occurred();
-          if (exc_type) {
-            if (unlikely(!__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) __PYX_ERR(1, 86, __pyx_L1_error)
-            PyErr_Clear();
-          }
-          break;
-        }
-      }
-      __Pyx_GOTREF(__pyx_t_10);
-      __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_10);
-      __pyx_t_10 = 0;
-      __pyx_v_i = __pyx_t_4;
-      __pyx_t_4 = (__pyx_t_4 + 1);
-
-      /* "carray.from_py":87
- *     if i == length:
- *         for i, item in enumerate(o):
- *             if i >= length:             # <<<<<<<<<<<<<<
- *                 break
- *             v[i] = item
-*/
-      __pyx_t_6 = (__pyx_v_i >= __pyx_v_length);
-      if (__pyx_t_6) {
-
-        /* "carray.from_py":88
- *         for i, item in enumerate(o):
- *             if i >= length:
- *                 break             # <<<<<<<<<<<<<<
- *             v[i] = item
- *         else:
-*/
-        goto __pyx_L13_break;
-
-        /* "carray.from_py":87
- *     if i == length:
- *         for i, item in enumerate(o):
- *             if i >= length:             # <<<<<<<<<<<<<<
- *                 break
- *             v[i] = item
-*/
-      }
-
-      /* "carray.from_py":89
- *             if i >= length:
- *                 break
- *             v[i] = item             # <<<<<<<<<<<<<<
- *         else:
- *             i += 1  # convert index to length
-*/
-      if (unlikely((__Pyx_carray_from_py_int(__pyx_v_item, __pyx_t_11, 5) < 0))) __PYX_ERR(1, 89, __pyx_L1_error)
-      memcpy(&((__pyx_v_v[__pyx_v_i])[0]), __pyx_t_11, sizeof((__pyx_v_v[__pyx_v_i])[0]) * (5));
-
-      /* "carray.from_py":86
- *         pass
- *     if i == length:
- *         for i, item in enumerate(o):             # <<<<<<<<<<<<<<
- *             if i >= length:
- *                 break
-*/
-    }
-    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    goto __pyx_L15_for_else;
-    __pyx_L13_break:;
-    __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-    goto __pyx_L16_for_end;
-    /*else*/ {
-      __pyx_L15_for_else:;
-
-      /* "carray.from_py":91
- *             v[i] = item
- *         else:
- *             i += 1  # convert index to length             # <<<<<<<<<<<<<<
- *             if i == length:
- *                 return 0
-*/
-      __pyx_v_i = (__pyx_v_i + 1);
-
-      /* "carray.from_py":92
- *         else:
- *             i += 1  # convert index to length
- *             if i == length:             # <<<<<<<<<<<<<<
- *                 return 0
- * 
-*/
-      __pyx_t_6 = (__pyx_v_i == __pyx_v_length);
-      if (__pyx_t_6) {
-
-        /* "carray.from_py":93
- *             i += 1  # convert index to length
- *             if i == length:
- *                 return 0             # <<<<<<<<<<<<<<
- * 
- *     PyErr_Format(
-*/
-        __pyx_r = 0;
-        goto __pyx_L0;
-
-        /* "carray.from_py":92
- *         else:
- *             i += 1  # convert index to length
- *             if i == length:             # <<<<<<<<<<<<<<
- *                 return 0
- * 
-*/
-      }
-    }
-    __pyx_L16_for_end:;
-
-    /* "carray.from_py":85
- *     except (TypeError, OverflowError):
- *         pass
- *     if i == length:             # <<<<<<<<<<<<<<
- *         for i, item in enumerate(o):
- *             if i >= length:
-*/
-  }
-
-  /* "carray.from_py":98
- *         IndexError,
- *         ("too many values found during array assignment, expected %zd"
- *          if i >= length else             # <<<<<<<<<<<<<<
- *          "not enough values found during array assignment, expected %zd, got %zd"),
- *         length, i)
-*/
-  __pyx_t_6 = (__pyx_v_i >= __pyx_v_length);
-  if (__pyx_t_6) {
-    __pyx_t_12 = ((char const *)"too many values found during array assignment, expected %zd");
-  } else {
-    __pyx_t_12 = ((char const *)"not enough values found during array assignment, expected %zd, got %zd");
-  }
-
-  /* "carray.from_py":95
- *                 return 0
- * 
- *     PyErr_Format(             # <<<<<<<<<<<<<<
- *         IndexError,
- *         ("too many values found during array assignment, expected %zd"
-*/
-  __pyx_t_7 = PyErr_Format(((PyObject *)(((PyTypeObject*)PyExc_IndexError))), __pyx_t_12, __pyx_v_length, __pyx_v_i); if (unlikely(!__pyx_t_7)) __PYX_ERR(1, 95, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_7);
-  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
-
-  /* "carray.from_py":78
- *     object PyErr_Format(exc, const char *format, ...)
- * 
- * @cname("__Pyx_carray_from_py_int___5b_5_5d_")             # <<<<<<<<<<<<<<
- * cdef int __Pyx_carray_from_py_int___5b_5_5d_(object o, base_type *v, Py_ssize_t length) except -1:
- *     cdef Py_ssize_t i = length
-*/
-
-  /* function exit code */
-  __pyx_r = 0;
-  goto __pyx_L0;
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_7);
-  __Pyx_XDECREF(__pyx_t_10);
-  __Pyx_AddTraceback("carray.from_py.__Pyx_carray_from_py_int___5b_5_5d_", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = -1;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_item);
@@ -5235,7 +4683,7 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
  *         # Inicializar matrices en 0
  *         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))             # <<<<<<<<<<<<<<
  *         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
- *         memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))
+ *         memset(self.horas_maestro_semana, 0, sizeof(self.horas_maestro_semana))
 */
   (void)(memset(__pyx_v_self->ocupacion_maestros, 0, (sizeof(__pyx_v_self->ocupacion_maestros))));
 
@@ -5243,7 +4691,7 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
  *         # Inicializar matrices en 0
  *         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
  *         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))             # <<<<<<<<<<<<<<
- *         memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))
+ *         memset(self.horas_maestro_semana, 0, sizeof(self.horas_maestro_semana))
  * 
 */
   (void)(memset(__pyx_v_self->ocupacion_grupos, 0, (sizeof(__pyx_v_self->ocupacion_grupos))));
@@ -5251,11 +4699,11 @@ static int __pyx_pf_9scheduler_15SchedulerEngine___init__(struct __pyx_obj_9sche
   /* "scheduler.pyx":45
  *         memset(self.ocupacion_maestros, 0, sizeof(self.ocupacion_maestros))
  *         memset(self.ocupacion_grupos, 0, sizeof(self.ocupacion_grupos))
- *         memset(self.horas_maestro_dia, 0, sizeof(self.horas_maestro_dia))             # <<<<<<<<<<<<<<
+ *         memset(self.horas_maestro_semana, 0, sizeof(self.horas_maestro_semana))             # <<<<<<<<<<<<<<
  * 
  *         # Inicializar semilla random
 */
-  (void)(memset(__pyx_v_self->horas_maestro_dia, 0, (sizeof(__pyx_v_self->horas_maestro_dia))));
+  (void)(memset(__pyx_v_self->horas_maestro_semana, 0, (sizeof(__pyx_v_self->horas_maestro_semana))));
 
   /* "scheduler.pyx":48
  * 
@@ -5797,7 +5245,7 @@ static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj
  *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
  *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1             # <<<<<<<<<<<<<<
  *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
- *         # Actualizar contador de horas del maestro en ese da
+ *         # Actualizar contador de horas semanales del maestro
 */
       (((__pyx_v_self->ocupacion_maestros[__pyx_v_dia])[(__pyx_v_hora - __pyx_v_self->hora_min)])[__pyx_v_maestro_id]) = 1;
 
@@ -5805,7 +5253,7 @@ static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj
  *             if hora - self.hora_min >= 0 and hora - self.hora_min < 14:
  *                 self.ocupacion_maestros[dia][hora - self.hora_min][maestro_id] = 1
  *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1             # <<<<<<<<<<<<<<
- *         # Actualizar contador de horas del maestro en ese da
+ *         # Actualizar contador de horas semanales del maestro
  *         if maestro_id < 100:
 */
       (((__pyx_v_self->ocupacion_grupos[__pyx_v_dia])[(__pyx_v_hora - __pyx_v_self->hora_min)])[__pyx_v_grupo_id]) = 1;
@@ -5822,30 +5270,29 @@ static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj
 
   /* "scheduler.pyx":106
  *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
- *         # Actualizar contador de horas del maestro en ese da
+ *         # Actualizar contador de horas semanales del maestro
  *         if maestro_id < 100:             # <<<<<<<<<<<<<<
- *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ *             self.horas_maestro_semana[maestro_id] += duracion
  * 
 */
   __pyx_t_4 = (__pyx_v_maestro_id < 0x64);
   if (__pyx_t_4) {
 
     /* "scheduler.pyx":107
- *         # Actualizar contador de horas del maestro en ese da
+ *         # Actualizar contador de horas semanales del maestro
  *         if maestro_id < 100:
- *             self.horas_maestro_dia[maestro_id][dia] += duracion             # <<<<<<<<<<<<<<
+ *             self.horas_maestro_semana[maestro_id] += duracion             # <<<<<<<<<<<<<<
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):
 */
     __pyx_t_1 = __pyx_v_maestro_id;
-    __pyx_t_2 = __pyx_v_dia;
-    ((__pyx_v_self->horas_maestro_dia[__pyx_t_1])[__pyx_t_2]) = (((__pyx_v_self->horas_maestro_dia[__pyx_t_1])[__pyx_t_2]) + __pyx_v_duracion);
+    (__pyx_v_self->horas_maestro_semana[__pyx_t_1]) = ((__pyx_v_self->horas_maestro_semana[__pyx_t_1]) + __pyx_v_duracion);
 
     /* "scheduler.pyx":106
  *                 self.ocupacion_grupos[dia][hora - self.hora_min][grupo_id] = 1
- *         # Actualizar contador de horas del maestro en ese da
+ *         # Actualizar contador de horas semanales del maestro
  *         if maestro_id < 100:             # <<<<<<<<<<<<<<
- *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ *             self.horas_maestro_semana[maestro_id] += duracion
  * 
 */
   }
@@ -5862,7 +5309,7 @@ static void __pyx_f_9scheduler_15SchedulerEngine_marcar_ocupado(struct __pyx_obj
 }
 
 /* "scheduler.pyx":109
- *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ *             self.horas_maestro_semana[maestro_id] += duracion
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):             # <<<<<<<<<<<<<<
  *         """
@@ -5921,8 +5368,8 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
   PyObject *__pyx_v_duracion = NULL;
   PyObject *__pyx_v_maestro_id = NULL;
   PyObject *__pyx_v_dias_disponibles = NULL;
-  PyObject *__pyx_v_horas_max_maestro = NULL;
-  PyObject *__pyx_v_horas_usadas = NULL;
+  PyObject *__pyx_v_horas_max_semana = NULL;
+  PyObject *__pyx_v_horas_usadas_semana = NULL;
   PyObject *__pyx_v_hora_fin = NULL;
   CYTHON_UNUSED long __pyx_7genexpr__pyx_v__;
   PyObject *__pyx_r = NULL;
@@ -8358,7 +7805,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
  * 
  *                     maestro_id = maestro['id']             # <<<<<<<<<<<<<<
  *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
- *                     horas_max_maestro = maestro.get('horas_max_dia', 8)
+ *                     horas_max_semana = maestro.get('horas_max_semana', 15)  # 15 horas mximo por semana
 */
         __pyx_t_13 = __Pyx_PyObject_Dict_GetItem(__pyx_v_maestro, __pyx_mstate_global->__pyx_n_u_id); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 306, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_13);
@@ -8369,7 +7816,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
  * 
  *                     maestro_id = maestro['id']
  *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])             # <<<<<<<<<<<<<<
- *                     horas_max_maestro = maestro.get('horas_max_dia', 8)
+ *                     horas_max_semana = maestro.get('horas_max_semana', 15)  # 15 horas mximo por semana
  * 
 */
         __pyx_t_4 = __pyx_v_maestro;
@@ -8406,7 +7853,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
         /* "scheduler.pyx":308
  *                     maestro_id = maestro['id']
  *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
- *                     horas_max_maestro = maestro.get('horas_max_dia', 8)             # <<<<<<<<<<<<<<
+ *                     horas_max_semana = maestro.get('horas_max_semana', 15)  # 15 horas mximo por semana             # <<<<<<<<<<<<<<
  * 
  *                     # Verificar si el maestro puede dar clase este da
 */
@@ -8415,7 +7862,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
         __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_13, __pyx_mstate_global->__pyx_tuple[0], NULL); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 308, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
-        __Pyx_XDECREF_SET(__pyx_v_horas_max_maestro, __pyx_t_3);
+        __Pyx_XDECREF_SET(__pyx_v_horas_max_semana, __pyx_t_3);
         __pyx_t_3 = 0;
 
         /* "scheduler.pyx":311
@@ -8436,7 +7883,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
  *                     if dia not in dias_disponibles:
  *                         continue             # <<<<<<<<<<<<<<
  * 
- *                     # Verificar horas mximas del maestro en este da
+ *                     # Verificar horas mximas semanales del maestro
 */
           goto __pyx_L83_continue;
 
@@ -8451,20 +7898,20 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
 
         /* "scheduler.pyx":315
  * 
- *                     # Verificar horas mximas del maestro en este da
- *                     horas_usadas = 0             # <<<<<<<<<<<<<<
+ *                     # Verificar horas mximas semanales del maestro
+ *                     horas_usadas_semana = 0             # <<<<<<<<<<<<<<
  *                     if maestro_id < 100:
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]
 */
         __Pyx_INCREF(__pyx_mstate_global->__pyx_int_0);
-        __Pyx_XDECREF_SET(__pyx_v_horas_usadas, __pyx_mstate_global->__pyx_int_0);
+        __Pyx_XDECREF_SET(__pyx_v_horas_usadas_semana, __pyx_mstate_global->__pyx_int_0);
 
         /* "scheduler.pyx":316
- *                     # Verificar horas mximas del maestro en este da
- *                     horas_usadas = 0
+ *                     # Verificar horas mximas semanales del maestro
+ *                     horas_usadas_semana = 0
  *                     if maestro_id < 100:             # <<<<<<<<<<<<<<
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
- *                     if horas_usadas + duracion > horas_max_maestro:
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]
+ *                     if horas_usadas_semana + duracion > horas_max_semana:
 */
         __pyx_t_3 = PyObject_RichCompare(__pyx_v_maestro_id, __pyx_mstate_global->__pyx_int_100, Py_LT); __Pyx_XGOTREF(__pyx_t_3); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 316, __pyx_L1_error)
         __pyx_t_18 = __Pyx_PyObject_IsTrue(__pyx_t_3); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 316, __pyx_L1_error)
@@ -8472,45 +7919,45 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
         if (__pyx_t_18) {
 
           /* "scheduler.pyx":317
- *                     horas_usadas = 0
+ *                     horas_usadas_semana = 0
  *                     if maestro_id < 100:
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]             # <<<<<<<<<<<<<<
- *                     if horas_usadas + duracion > horas_max_maestro:
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]             # <<<<<<<<<<<<<<
+ *                     if horas_usadas_semana + duracion > horas_max_semana:
  *                         continue
 */
           __pyx_t_14 = __Pyx_PyIndex_AsSsize_t(__pyx_v_maestro_id); if (unlikely((__pyx_t_14 == (Py_ssize_t)-1) && PyErr_Occurred())) __PYX_ERR(0, 317, __pyx_L1_error)
-          __pyx_t_3 = __Pyx_PyLong_From_int(((__pyx_v_self->horas_maestro_dia[__pyx_t_14])[__pyx_v_dia])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 317, __pyx_L1_error)
+          __pyx_t_3 = __Pyx_PyLong_From_int((__pyx_v_self->horas_maestro_semana[__pyx_t_14])); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 317, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_3);
-          __Pyx_DECREF_SET(__pyx_v_horas_usadas, __pyx_t_3);
+          __Pyx_DECREF_SET(__pyx_v_horas_usadas_semana, __pyx_t_3);
           __pyx_t_3 = 0;
 
           /* "scheduler.pyx":316
- *                     # Verificar horas mximas del maestro en este da
- *                     horas_usadas = 0
+ *                     # Verificar horas mximas semanales del maestro
+ *                     horas_usadas_semana = 0
  *                     if maestro_id < 100:             # <<<<<<<<<<<<<<
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
- *                     if horas_usadas + duracion > horas_max_maestro:
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]
+ *                     if horas_usadas_semana + duracion > horas_max_semana:
 */
         }
 
         /* "scheduler.pyx":318
  *                     if maestro_id < 100:
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
- *                     if horas_usadas + duracion > horas_max_maestro:             # <<<<<<<<<<<<<<
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]
+ *                     if horas_usadas_semana + duracion > horas_max_semana:             # <<<<<<<<<<<<<<
  *                         continue
  * 
 */
-        __pyx_t_3 = PyNumber_Add(__pyx_v_horas_usadas, __pyx_v_duracion); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 318, __pyx_L1_error)
+        __pyx_t_3 = PyNumber_Add(__pyx_v_horas_usadas_semana, __pyx_v_duracion); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 318, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
-        __pyx_t_13 = PyObject_RichCompare(__pyx_t_3, __pyx_v_horas_max_maestro, Py_GT); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 318, __pyx_L1_error)
+        __pyx_t_13 = PyObject_RichCompare(__pyx_t_3, __pyx_v_horas_max_semana, Py_GT); __Pyx_XGOTREF(__pyx_t_13); if (unlikely(!__pyx_t_13)) __PYX_ERR(0, 318, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
         __pyx_t_18 = __Pyx_PyObject_IsTrue(__pyx_t_13); if (unlikely((__pyx_t_18 < 0))) __PYX_ERR(0, 318, __pyx_L1_error)
         __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
         if (__pyx_t_18) {
 
           /* "scheduler.pyx":319
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
- *                     if horas_usadas + duracion > horas_max_maestro:
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]
+ *                     if horas_usadas_semana + duracion > horas_max_semana:
  *                         continue             # <<<<<<<<<<<<<<
  * 
  *                     hora_fin = hora_actual + duracion
@@ -8519,8 +7966,8 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
 
           /* "scheduler.pyx":318
  *                     if maestro_id < 100:
- *                         horas_usadas = self.horas_maestro_dia[maestro_id][dia]
- *                     if horas_usadas + duracion > horas_max_maestro:             # <<<<<<<<<<<<<<
+ *                         horas_usadas_semana = self.horas_maestro_semana[maestro_id]
+ *                     if horas_usadas_semana + duracion > horas_max_semana:             # <<<<<<<<<<<<<<
  *                         continue
  * 
 */
@@ -8732,7 +8179,7 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
   goto __pyx_L0;
 
   /* "scheduler.pyx":109
- *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ *             self.horas_maestro_semana[maestro_id] += duracion
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):             # <<<<<<<<<<<<<<
  *         """
@@ -8787,8 +8234,8 @@ static PyObject *__pyx_f_9scheduler_15SchedulerEngine_generar_horario(struct __p
   __Pyx_XDECREF(__pyx_v_duracion);
   __Pyx_XDECREF(__pyx_v_maestro_id);
   __Pyx_XDECREF(__pyx_v_dias_disponibles);
-  __Pyx_XDECREF(__pyx_v_horas_max_maestro);
-  __Pyx_XDECREF(__pyx_v_horas_usadas);
+  __Pyx_XDECREF(__pyx_v_horas_max_semana);
+  __Pyx_XDECREF(__pyx_v_horas_usadas_semana);
   __Pyx_XDECREF(__pyx_v_hora_fin);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
@@ -9008,7 +8455,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   /* "(tree fragment)":5
  *     cdef object _dict
  *     cdef bint use_setstate
- *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)             # <<<<<<<<<<<<<<
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_semana, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)             # <<<<<<<<<<<<<<
  *     _dict = getattr(self, '__dict__', None)
  *     if _dict is not None and _dict:
 */
@@ -9016,7 +8463,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __Pyx_PyLong_From_int(__pyx_v_self->hora_min); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_carray_to_py_int___5b_5_5d_(__pyx_v_self->horas_maestro_dia, 100); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 5, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_carray_to_py_int(__pyx_v_self->horas_maestro_semana, 100); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __pyx_t_4 = __Pyx_PyLong_From_int(__pyx_v_self->num_grupos); if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 5, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
@@ -9059,7 +8506,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
 
   /* "(tree fragment)":6
  *     cdef bint use_setstate
- *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_semana, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
  *     _dict = getattr(self, '__dict__', None)             # <<<<<<<<<<<<<<
  *     if _dict is not None and _dict:
  *         state += (_dict,)
@@ -9070,7 +8517,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
   __pyx_t_9 = 0;
 
   /* "(tree fragment)":7
- *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_semana, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
  *     _dict = getattr(self, '__dict__', None)
  *     if _dict is not None and _dict:             # <<<<<<<<<<<<<<
  *         state += (_dict,)
@@ -9115,7 +8562,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
     __pyx_v_use_setstate = 1;
 
     /* "(tree fragment)":7
- *     state = (self.hora_max, self.hora_min, self.horas_maestro_dia, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
+ *     state = (self.hora_max, self.hora_min, self.horas_maestro_semana, self.num_grupos, self.num_maestros, self.num_materias, self.ocupacion_grupos, self.ocupacion_maestros)
  *     _dict = getattr(self, '__dict__', None)
  *     if _dict is not None and _dict:             # <<<<<<<<<<<<<<
  *         state += (_dict,)
@@ -9129,7 +8576,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
  *     else:
  *         use_setstate = ('False',)             # <<<<<<<<<<<<<<
  *     if use_setstate:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, None), state
 */
   /*else*/ {
     __pyx_t_10 = __Pyx_PyObject_IsTrue(__pyx_mstate_global->__pyx_tuple[1]); if (unlikely((__pyx_t_10 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 11, __pyx_L1_error)
@@ -9141,7 +8588,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
  *     else:
  *         use_setstate = ('False',)
  *     if use_setstate:             # <<<<<<<<<<<<<<
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, None), state
  *     else:
 */
   if (__pyx_v_use_setstate) {
@@ -9149,9 +8596,9 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
     /* "(tree fragment)":13
  *         use_setstate = ('False',)
  *     if use_setstate:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state             # <<<<<<<<<<<<<<
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, None), state             # <<<<<<<<<<<<<<
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, state)
 */
     __Pyx_XDECREF(__pyx_r);
     __Pyx_GetModuleGlobalName(__pyx_t_8, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine); if (unlikely(!__pyx_t_8)) __PYX_ERR(1, 13, __pyx_L1_error)
@@ -9161,9 +8608,9 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
     __Pyx_INCREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
     if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, ((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self)))) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
-    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_168994040);
-    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_168994040);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_mstate_global->__pyx_int_168994040) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
+    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_129274947);
+    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_129274947);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_mstate_global->__pyx_int_129274947) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
     __Pyx_INCREF(Py_None);
     __Pyx_GIVEREF(Py_None);
     if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 2, Py_None) != (0)) __PYX_ERR(1, 13, __pyx_L1_error);
@@ -9186,15 +8633,15 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
  *     else:
  *         use_setstate = ('False',)
  *     if use_setstate:             # <<<<<<<<<<<<<<
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, None), state
  *     else:
 */
   }
 
   /* "(tree fragment)":15
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, None), state
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)             # <<<<<<<<<<<<<<
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, state)             # <<<<<<<<<<<<<<
  * def __setstate_cython__(self, __pyx_state):
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -9207,9 +8654,9 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
     __Pyx_INCREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
     __Pyx_GIVEREF(((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self))));
     if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 0, ((PyObject *)Py_TYPE(((PyObject *)__pyx_v_self)))) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
-    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_168994040);
-    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_168994040);
-    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_mstate_global->__pyx_int_168994040) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
+    __Pyx_INCREF(__pyx_mstate_global->__pyx_int_129274947);
+    __Pyx_GIVEREF(__pyx_mstate_global->__pyx_int_129274947);
+    if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 1, __pyx_mstate_global->__pyx_int_129274947) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
     __Pyx_INCREF(__pyx_v_state);
     __Pyx_GIVEREF(__pyx_v_state);
     if (__Pyx_PyTuple_SET_ITEM(__pyx_t_9, 2, __pyx_v_state) != (0)) __PYX_ERR(1, 15, __pyx_L1_error);
@@ -9255,7 +8702,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_4__reduce_cython__(struct
 
 /* "(tree fragment)":16
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, state)
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -9356,7 +8803,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_6__setstate_cython__(stru
   __Pyx_RefNannySetupContext("__setstate_cython__", 0);
 
   /* "(tree fragment)":17
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, state)
  * def __setstate_cython__(self, __pyx_state):
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)             # <<<<<<<<<<<<<<
 */
@@ -9374,7 +8821,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_6__setstate_cython__(stru
 
   /* "(tree fragment)":16
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, state)
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -9398,7 +8845,7 @@ static PyObject *__pyx_pf_9scheduler_15SchedulerEngine_6__setstate_cython__(stru
  *     int __Pyx_UpdateUnpickledDict(object, object, Py_ssize_t) except -1
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):             # <<<<<<<<<<<<<<
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
 */
 
 /* Python wrapper */
@@ -9529,15 +8976,15 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
   /* "(tree fragment)":6
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')             # <<<<<<<<<<<<<<
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')             # <<<<<<<<<<<<<<
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)
  *     if __pyx_state is not None:
 */
-  __pyx_t_1 = __Pyx_CheckUnpickleChecksum(__pyx_v___pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, ((char const *)"hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros")); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(1, 6, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_CheckUnpickleChecksum(__pyx_v___pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, ((char const *)"hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros")); if (unlikely(__pyx_t_1 == ((int)-1))) __PYX_ERR(1, 6, __pyx_L1_error)
 
   /* "(tree fragment)":7
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)             # <<<<<<<<<<<<<<
  *     if __pyx_state is not None:
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
@@ -9556,7 +9003,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
   __pyx_t_2 = 0;
 
   /* "(tree fragment)":8
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)
  *     if __pyx_state is not None:             # <<<<<<<<<<<<<<
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
@@ -9581,7 +9028,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
     __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
     /* "(tree fragment)":8
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
  *     __pyx_result = SchedulerEngine.__new__(__pyx_type)
  *     if __pyx_state is not None:             # <<<<<<<<<<<<<<
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
@@ -9594,7 +9041,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
  *     return __pyx_result             # <<<<<<<<<<<<<<
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_semana = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
 */
   __Pyx_XDECREF(__pyx_r);
   __Pyx_INCREF(__pyx_v___pyx_result);
@@ -9606,7 +9053,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
  *     int __Pyx_UpdateUnpickledDict(object, object, Py_ssize_t) except -1
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):             # <<<<<<<<<<<<<<
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
 */
 
   /* function exit code */
@@ -9626,7 +9073,7 @@ static PyObject *__pyx_pf_9scheduler___pyx_unpickle_SchedulerEngine(CYTHON_UNUSE
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
  *     return __pyx_result
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):             # <<<<<<<<<<<<<<
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_semana = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
  *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)
 */
 
@@ -9635,7 +9082,7 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
   int __pyx_t_2;
-  int __pyx_t_3[100][5];
+  int __pyx_t_3[100];
   int __pyx_t_4[5][14][100];
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
@@ -9645,7 +9092,7 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
   /* "(tree fragment)":12
  *     return __pyx_result
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]             # <<<<<<<<<<<<<<
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_semana = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]             # <<<<<<<<<<<<<<
  *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)
 */
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 0, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
@@ -9660,9 +9107,9 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
   __pyx_v___pyx_result->hora_min = __pyx_t_2;
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 2, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (unlikely((__Pyx_carray_from_py_int___5b_5_5d_(__pyx_t_1, __pyx_t_3, 100) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
+  if (unlikely((__Pyx_carray_from_py_int(__pyx_t_1, __pyx_t_3, 100) < 0))) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  memcpy(&(__pyx_v___pyx_result->horas_maestro_dia[0]), __pyx_t_3, sizeof(__pyx_v___pyx_result->horas_maestro_dia[0]) * (100));
+  memcpy(&(__pyx_v___pyx_result->horas_maestro_semana[0]), __pyx_t_3, sizeof(__pyx_v___pyx_result->horas_maestro_semana[0]) * (100));
   __pyx_t_1 = __Pyx_GetItemInt_Tuple(__pyx_v___pyx_state, 3, long, 1, __Pyx_PyLong_From_long, 0, 0, 1, 1, __Pyx_ReferenceSharing_FunctionArgument); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_t_2 = __Pyx_PyLong_As_int(__pyx_t_1); if (unlikely((__pyx_t_2 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 12, __pyx_L1_error)
@@ -9691,7 +9138,7 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
 
   /* "(tree fragment)":13
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_semana = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
  *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)             # <<<<<<<<<<<<<<
 */
   __pyx_t_2 = __Pyx_UpdateUnpickledDict(((PyObject *)__pyx_v___pyx_result), __pyx_v___pyx_state, 8); if (unlikely(__pyx_t_2 == ((int)-1))) __PYX_ERR(1, 13, __pyx_L1_error)
@@ -9700,7 +9147,7 @@ static PyObject *__pyx_f_9scheduler___pyx_unpickle_SchedulerEngine__set_state(st
  *         __pyx_unpickle_SchedulerEngine__set_state(<SchedulerEngine> __pyx_result, __pyx_state)
  *     return __pyx_result
  * cdef __pyx_unpickle_SchedulerEngine__set_state(SchedulerEngine __pyx_result, __pyx_state: tuple):             # <<<<<<<<<<<<<<
- *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_dia = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
+ *     __pyx_result.hora_max = __pyx_state[0]; __pyx_result.hora_min = __pyx_state[1]; __pyx_result.horas_maestro_semana = __pyx_state[2]; __pyx_result.num_grupos = __pyx_state[3]; __pyx_result.num_maestros = __pyx_state[4]; __pyx_result.num_materias = __pyx_state[5]; __pyx_result.ocupacion_grupos = __pyx_state[6]; __pyx_result.ocupacion_maestros = __pyx_state[7]
  *     __Pyx_UpdateUnpickledDict(__pyx_result, __pyx_state, 8)
 */
 
@@ -10253,7 +9700,7 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "scheduler.pyx":109
- *             self.horas_maestro_dia[maestro_id][dia] += duracion
+ *             self.horas_maestro_semana[maestro_id] += duracion
  * 
  *     cpdef list generar_horario(self, list maestros_data, list materias_data, list grupos_data):             # <<<<<<<<<<<<<<
  *         """
@@ -10282,7 +9729,7 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
 
   /* "(tree fragment)":16
  *     else:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, state)
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, state)
  * def __setstate_cython__(self, __pyx_state):             # <<<<<<<<<<<<<<
  *     __pyx_unpickle_SchedulerEngine__set_state(self, __pyx_state)
 */
@@ -10299,7 +9746,7 @@ __Pyx_RefNannySetupContext("PyInit_scheduler", 0);
  *     int __Pyx_UpdateUnpickledDict(object, object, Py_ssize_t) except -1
  * def __pyx_unpickle_SchedulerEngine(__pyx_type, long __pyx_checksum, tuple __pyx_state):             # <<<<<<<<<<<<<<
  *     cdef object __pyx_result
- *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0xa12a4f8, 0xd3682e8, 0xc2e2420, b'hora_max, hora_min, horas_maestro_dia, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
+ *     __Pyx_CheckUnpickleChecksum(__pyx_checksum, 0x7b49443, 0xa63a3b8, 0xcb09b74, b'hora_max, hora_min, horas_maestro_semana, num_grupos, num_maestros, num_materias, ocupacion_grupos, ocupacion_maestros')
 */
   __pyx_t_2 = __Pyx_CyFunction_New(&__pyx_mdef_9scheduler_1__pyx_unpickle_SchedulerEngine, 0, __pyx_mstate_global->__pyx_n_u_pyx_unpickle_SchedulerEngine, NULL, __pyx_mstate_global->__pyx_n_u_scheduler, __pyx_mstate_global->__pyx_d, ((PyObject *)__pyx_mstate_global->__pyx_codeobj_tab[3])); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 4, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
@@ -10391,11 +9838,11 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   /* "scheduler.pyx":308
  *                     maestro_id = maestro['id']
  *                     dias_disponibles = maestro.get('dias_disponibles', [0, 1, 2, 3, 4])
- *                     horas_max_maestro = maestro.get('horas_max_dia', 8)             # <<<<<<<<<<<<<<
+ *                     horas_max_semana = maestro.get('horas_max_semana', 15)  # 15 horas mximo por semana             # <<<<<<<<<<<<<<
  * 
  *                     # Verificar si el maestro puede dar clase este da
 */
-  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_horas_max_dia, __pyx_mstate_global->__pyx_int_8); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(0, 308, __pyx_L1_error)
+  __pyx_mstate_global->__pyx_tuple[0] = PyTuple_Pack(2, __pyx_mstate_global->__pyx_n_u_horas_max_semana, __pyx_mstate_global->__pyx_int_15); if (unlikely(!__pyx_mstate_global->__pyx_tuple[0])) __PYX_ERR(0, 308, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[0]);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[0]);
 
@@ -10404,7 +9851,7 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
  *     else:
  *         use_setstate = ('False',)             # <<<<<<<<<<<<<<
  *     if use_setstate:
- *         return __pyx_unpickle_SchedulerEngine, (type(self), 0xa12a4f8, None), state
+ *         return __pyx_unpickle_SchedulerEngine, (type(self), 0x7b49443, None), state
 */
   __pyx_mstate_global->__pyx_tuple[1] = PyTuple_Pack(1, __pyx_mstate_global->__pyx_n_u_False); if (unlikely(!__pyx_mstate_global->__pyx_tuple[1])) __PYX_ERR(1, 11, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_mstate_global->__pyx_tuple[1]);
@@ -10444,33 +9891,33 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 static int __Pyx_InitConstants(__pyx_mstatetype *__pyx_mstate) {
   CYTHON_UNUSED_VAR(__pyx_mstate);
   {
-    const struct { const unsigned int length: 11; } index[] = {{1},{179},{8},{7},{6},{2},{9},{13},{14},{5},{20},{15},{33},{35},{31},{6},{18},{17},{18},{10},{16},{8},{5},{9},{8},{15},{3},{12},{8},{6},{11},{8},{11},{8},{8},{5},{15},{13},{15},{2},{13},{5},{10},{8},{13},{8},{10},{8},{13},{12},{10},{8},{7},{3},{14},{12},{11},{10},{30},{14},{12},{6},{10},{17},{13},{9},{4},{12},{10},{12},{19},{7},{5},{8},{6},{12},{6},{1406},{11},{140},{57}};
-    #if (CYTHON_COMPRESS_STRINGS) == 3 && __PYX_LIMITED_VERSION_HEX >= 0x030e0000 /* compression: zstd (1712 bytes) */
-const char* const cstring = "(\265/\375`J\t55\000zR\340\021:\360\0327\314\300l\000\2222\3101B\243\303j\302\334\324 \23707\205\265\"@\266$\245W\210V\244#V\322\256\201H\310+\002%\200\005)I\000\340\257#\207J\240\250\n\022\037\376\000\013\001\024\001\2704\263\317\334\031\357\251\0144O\3634{8\253\271\304\27341\032\\\205\030\363\316\265\2071p=ui\236h\020\357|f`6K(^\336i^\026\232\030\250US\325>\214\361VWT\210\362JP\223wR\355\\\236:\030\314\250\211:a\341\251}\033c\036\326<!\306%\3724}gN\250\247\203\324)\355\203m\246\250\2000\226\321<\341\212n\230)\252`\211P\377\326R;\361v\271M\236\357\324\372\267\313\333,5.\313\\\242\367/\337\350(Sh\226\243\207\3574\361\211\232jV\321\363\314\036\243\252\367xj'u\347\340\210\252c\251\3659\256(\325\330\313\031K\266\016R\251\343i\252?s\335\215=t\334z\357\374\343\355\326=n\225\247\237\264p,\317<\336Xn$@9\240\361\024j\225g\n\325=R\375\264\232\205zg\376t9ns<Q'\225\252fT\263\223:j\025\365\231\t\261.v\240o$\330\370\014\177\320\332t\216\004\000ZW\332=\270\005m\202\366\276d;k=z\006C\361\225\250\275\244+\341s[R{_\303\022?\363\266\332\233!\370\213\247l\004\355\315\255\256%\221\3709\366a\366P\324\031q\013\206\327\306\021\330Y\347\220\275\257\026$A\307q|e#d\257\216\315\361ikB\361I\376\3016\310^\222\373p%\270\251/\360J\035\3277\030\336\324_\264\257\366\203\366\352\272\217\277\260\016\014o\346\n,\203\354\265\271/\"\237l\313.\3051do\312\356p\311bo\312\307]\376\371\347\007\021QW\347j\270. _\330I8\205\001\000A\327\253\217d\354\235\365\014\003\200\215.\334\326\326\353/G\351\275\226\301\025cU\377z\275\325i\357\334\323e\357\2477\306S\032\003\321\362\314\302_^\323]V\243\364\017\212g\006\317U\375\255[\013\201\353\206\342\005\321 \306R\032\230O\214\356\235\315\323\304:\0037\336fmHEQ\347Q|\n\306\347*\314\215H\213d\332\326\314\230|\216\326\347\307/~\3121h\rm\256\333:\220\215\260\250xu\336\347?\\\016\367c\250\355\233\337f\256\315\247h\374\"n1s[@\376\253\025Zy\001\257\321\336&\246\3174\364\207\204\276\020\315/]\231\217\277\353\017\375\325c\nbE[+\322v\324^\234?;\221\307\315pW\374D\004\255\370\362'""\033\251K\342Q6\336\354i\274CL\327H{\356\017=\307+j\264^\305\326p\355\310\370\342\\\233\013lKF\230\027\302\342\030\025/I\204\021\205\206\270!\226\277\371\037\024NQ#;\021\037\340\022\017\244\013sY2~\006\215\266\353\035\020\037\202\2418\262\304\360\205\351O\203?\330\364\233\222~\022\322G\302\371\034\303\331\020g\362o-\331\206\020uD\024\"I\324a\371;\217\324\342\332\014\220\210\317\353)\275\241\013\037x\216\245\361\314S8\311\211\322\036\3245\306\016\353B\025\271v\355\267\036\320\023\000\0026.\004\201W(\350\373\014mP>_a\257>\372\014\353 \360\006\351>\324\360\305E\360'\343\027(\0263Qj\270\343\032\371\223\205\277\020{\323\027\257\305\212)\033\021{I\266!F\3439\326\210+j\253@`\204\337\2606\026\207K&\360\302\214`EE\260 X\320K\013\000\240+\253\352WA}(\337\367\035\375\243\241\2175\274\rk\020\272\r\247`\207\270\024\006\000b]\257-\234\357\t\274\257\255\224k!V$\273FN{A\037iE\035\320\217\031jW\307\313\332\264/$!\375\036\342:Lrq.\014\320W!^\271\331\225\301\370\267\026\245\275\232yakv\232\216E\022gD(W\347\306\210|\265{dt\253\207\276\242\033\346n\277\200H\367y\304\024b\0001\035\342\244|\322\227\255TD'U\277r\361/hE\t\001\277k\221:J\277\302\265\262\316Stb!\274\252\305G\262\227\374\002\347\n\254x\374\314\360f\216\221P$\227<\316\337*^\333\220\034n7\310\035 \t\201\n\250\001\245b\016\221\241\021\021\221$I\n\035!\010\002rNb\316\007qA\203dF\n\222\024\2621\006b\025\266\002\342\265\303\010\376\232\232\313r5l\234\234\207\223t\366\366Kp\262,\345\334\241C\372\370W\372\332\334\r\273\207\216{\314\264\254qY\355V\316<\373\"A\037\245\035\325O\246J\3563\333N\277\303\\\013\373\033\005\254\322OfQ\233\336OY\310<\263\311.\212\n\n+\016\304\005py\n(\306\374\243\226~\322\222\017I\340\265\325\013E#\275\274H\236e\362S\025\223\331\030\002M\3645\345\202v$\333t\211U\365\305\020U |r\230\355I\017\016\207\201\002\336\370;b\224\253\360\365pm\302\332\240\016.\273l$\327\263\272>EO\321\256\370\217\232\237c\347\036\263\017\371`\017\277L\037\354\024\275\217\264/a\271\r\233\315\ti3\234\244\005*\376\353?\257\335\350\334\"""\241\273\257v\003\\\036\373S)\010\263%\033\244O\033<\337A\225\03248\312E\305O\304\031D\362S\335\332\375\301!K\357\006\221\223\367#\231U\"t\177\214\361\315A\3424E\337\376\005.\247\021t\211-\334@\237S\022\262\345\320\253\201\267\352^[\225s6$\236\262\360\354R@\240\374\376|*BD\277h\177\262Z7\n\024P\016\215\027;\346\304]<\377\254\205\033\272iq\227\204\025\214\353\225<DO&\367\205\220\362\320\364\340AaR\277\027\225\242Y\220\013a\270\301\207\021\221i\202\240\023\010<a\261\024\036\201\336\330\026\336dd\327\245\255+\t\351\311\204:\374D=\252\021u\024\202\3271\033\340\305\317\253^\\\tPC\004\304\210\\\344p\300N\317\354\007\2727c\230\256,\035E\311\247\255B\027{T\t\033\205:%\177\353\014\033\001G~\303\002q\351\226\205Y\234*R\376\372\341\037E<\344Uj\231\377'@\316p\002\031E\337\224e$~\334\330m\223wb\242\303\030`\250\252\333\216\354kl`\036u]\360\234\370\236\202\006\225\320|\374\001";
-    PyObject *data = __Pyx_DecompressString(cstring, 1712, 3);
+    const struct { const unsigned int length: 11; } index[] = {{1},{179},{8},{7},{6},{2},{9},{13},{14},{5},{20},{15},{33},{35},{31},{6},{18},{17},{18},{10},{16},{8},{5},{9},{8},{15},{3},{12},{8},{6},{11},{8},{11},{8},{8},{5},{15},{16},{15},{2},{13},{5},{10},{8},{13},{8},{10},{8},{13},{12},{10},{8},{7},{3},{14},{12},{11},{10},{30},{14},{12},{6},{10},{17},{13},{9},{4},{12},{10},{12},{19},{7},{5},{8},{6},{12},{6},{1403},{11},{144},{57}};
+    #if (CYTHON_COMPRESS_STRINGS) == 3 && __PYX_LIMITED_VERSION_HEX >= 0x030e0000 /* compression: zstd (1699 bytes) */
+const char* const cstring = "(\265/\375`N\t\3154\000\372P\224\021;\360\0327\314\300l\000\2222\3101B\243\303\032RH\312 \23707\205\265\"@\266\344\n\255\020\255\323)R\322\036\221\316H5p\001\330 \217\000\000\240-\212\034*\201\242\"!\361\001\367\000\006\001\021\001\\g\036\245\177\346i\236f/\353U\227\231\227fF\201\254\2323y\262\275\234\177\354\271K\363D\201\231\353S\377\264Y:\221\232\267I\255\232\371\267Ws\335K9g\276\262\250\212\2227\324$O)\256\313s\003\201\0325Q\246\254\236{\211\347L\346M\2529\337\366i.\2354@\275\375\263Fm\236<\023%\345\223\363\313&U\026\345-QR\300\233\272}l\271\231H^r\223\\:\367\366\36147\313\235\313R\3376\367\351\232\375d\252f)r,\235f>Qs\325+z\236\232C\\7\027\317\315\264r\r\024\321U,\367>E\026\225\022{7\342\215o\240\324*\236\346\3523Y\236\330CE\2769\327>\222\307r\221\257\344n\332\252X\236Z4I1\021\361\241\361\021Ou\257\244\251\256\\\224\362\355U\253\233g\372v)rS<Q\246UJF\\5\323*\356\025\345\201\t\006\356\214\327@\000\240m\245\236\243W\320$hq<\2723\227\303\333\026\206qD-\036\341\210W\273\267Z\354\n\336\336\331\213\253\305\372\241\273z\332B\320b\355\356\\\221\210O\323:\314\034\206;\242^\261\020\343\372A;\363\032\262\330\345z \354\272\256\263-\204,\336\2657o\352\216L\374\261w\264\014\262x\354<Z\010p\372\022\274G^\3473\026\342\364\265p]n\007-\336\371\245\316\3226,\304\272'\264\013\262\030\007\263\200\374\321-=T\277\220\305i\233\243%\213\305i\027y\372\353\236\377#D\341\035\214\001\257x|\325\213\364\211\002\200\201-\227\027\307X<\363\266\002\200\214-]\026\337\254O?m\316\226@6\347u\373z=\226\211s\335\333e\317\267y\316Q;\377\320\362\324\252O\263)O\257O\333\347D\232\300\223]},\337\352\217\345N$\020\005\346\014\265\177\372\314(\347\332<\315\274\365\217gn\346\322\\2\003/\030\"\035\216\251+\0033\3625\\\036_\267\370i\277\2401\2704\036\347\177-D\005E\274{\227\336\016X\003\356\010r=\357&3\030\367\226`\374\241^1\203U<\276\313\005b;A\257\321b\245\244\237\024\364\203\200>P\314/\341\227\216\317\363\016\336\345]\010bC\234\013\342n\324b\335{z\241\016l\203Q^\211\241\353%\311Ha\2217\227\021\3537\346mp""\361\030\251\327\336\301\323t\212\032\315O\2655\235\033\"\306:\030\007\377\334\233\370z\201\254\372\005E<\n_B\240\240.h\365\232\274=\271>Q\033\275P\027\350\021\016#\374\202Sl\337F\243\361\374\306\303\177X\030\206 -|5\375)\360\003\225\276\222\3217*\372E6_#8\013\352F\276\211;\272\037\302\2350'\034\2058)\237\367\026\271:\327\346\001\361I_\342\031\274\352\320iZZ\327\275\244\217]\350\307c\210\376\345\201(h\\\326\233\370\000\217\000\020\333j\005|\006\302\314k{\0038\255\003X\014\364\363y\2023\271\337Q\332\252\016\017\3236\300\342\237\335w\n\262\300\007/\211\370a\303\241\026B\005s`\242\227D\341+\304\342\324\325k\261a\332B\304\342\261e\210\321:MK\244\365\224E\000\013\3515-\256\265\321\222\301\342\227\321\253\250\350%$\364\212y\305\270\256\000\000\266\254\316\1776\375\246\243\177D\364E\204e\260\346\300\317\364\2116H+A\000 \266\345\312\322\275=X\354\312J\265\024b\303\321c\350\324\023x\2216\334\371|\227\340\206q^\231\233z\005\243\242\277#d\203F\260\016n\361\371'\302*X\303/\027\337dW\345\202s.\210+\367K\235\267y\252\321\005q\360(B\273O\nK\204\001\3024hS\362\307\267t\241 \374\270\276(\026\337\2026\214\200\275<\267\310\347|\225\316\225y\235!S\373\360\256X]\034}\331-t0\014\205\343k\335/\020\206#\322\253{M(b\\p\014r\370\007\026\020q?(\206\2737\367\226\\\374\276\006\201\017\250\001\245r\016\311\220\210\210H\222$\205\016!\010BrNb\315\007q\311r4\222\202\244\222\2151c\0256\021\222\264\304$\002\273\236\303\262J\350X\221\317gi\355\261\267\200\010*\250\251\345\026\005\322\307\257\222\313N^\367\372w\330\321\222\341\213\335\352\266y\360\210+\204P\216\377\301@\221\274\n9\345\3509Y\310\212_uR\nv\215\002\311\247s\323\333)\013\230gZ\322\305\251`\301\212\007\341&\270<\005\2101\253Q\033O\n\340G\027Pl\365N\321\323\313\317\302!\375^&\035\245\306Y\254\020\032\243\243)\267\332Qm\263I,\252)\206\324\002H\315\301\261\307=\326qd\024o\210\203\021\0379\243\227\031\207\021\222\013\272\373\302\240FR=\233\366Q\334\025=\212\331\350\345\014nN3\373\376\007X\362\337\364qN\201\372H\374\322\224\373\263\341\234\220""\"\303\227t\230*\315\317\002\215\2616\2453\006M\323\276\002\r \036\027E\005\021F\226l\312>h\360\356\256T\032\246\321\000\367\027\007.n\361$Ku\227n\013\256CJ\304\356\034\"\257\315\223%\217\276\275\214\005|$\304(\r\360#\177\224\305\005\002\035\264\215\rD\271\025$F\016\250\032\275\365\356\250U&g[\342\031\013\014.m\010\324\333\277\247\276E\224\201\366\007\325ZR\360\004e\310\350c\212\223\231\354\341\037\256\004B\221B\354V\312\2421\200M\232\216\356I\322\242Hd\372)p\341\240}\304\221\352\035\311c\247\215W{\335\243N]\0274\014\203\306\022lD\275\360\033\333\002|\331g\264\312\213\022\223\376\304!\272d\214X\342\365B`d\273\367Cm\017\272\370\\wRz\255\0207\201\301\301\014(\016W\3563\377\254\341\334\205\364\233\250Y\240y\235\304\221J\216Vh>\031\243^X\031\360\360\357\026\354\024\0309\314\202\251%\245\326\217\245P\317S^\221\206\261~c$\r$PQ\330M[F\222\234+\260\005\337\216A\2100\001\206\r\265\330\341\373\362\033 E\243\024\022\247\272\247\240\273\022Z\344?";
+    PyObject *data = __Pyx_DecompressString(cstring, 1699, 3);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1747 bytes) */
-const char* const cstring = "BZh91AY&SY\203\316\316`\000\001Z\177\377\377\377\377\377\377\377\376\377\277\277\377\377\277\377\377\377\300@@@@@@@@@@@@\000@\000P\005\376\006\351&\315\266\321\253[8\001\307\206\247\244\244\323F\243G\224\031=O\t\251\344\315S`\221\246\236\022df\204\332\237\252\006'\250\365<\246M\033D\362\217L\220z\236\240\330\202i\345\003B\004\000\246\311\241\033D\236(h4\0004\r\000\000\000\000\000\000\320\001\352\036\246\215\000\032\230\020\21112FM6)\350\324\000\003@\006\200\000\304\000\000\000\000\000\000d\002\014\000\023\000\00410L\000\001\030\0012`\2310\000##\023\021\200\206\000\000\022\210\3214CS\"xF\202d\310\321\241\240\000\000\000\000\000\000\000\000\000\000\323F\231\311<\203!G**\226\224D\201\325\021~\237\217\317\350?fc\233\364\350)\233\232\21514U\375.\263\020 \223u\343\030\267\370L\345\222J\237\361K\354\240%\37225\025\345\024\236\201QU(B\023\316JQ\020k-\031\221\014\022\354\371\304\325\224\242\252\252\252\252\240\316r\031\360\2351B\240\024\245{E\354\032\272EU\321\253<!\216\027\263_V\nU\021UEUB\005y\027\202\031\017y\202^\305\225\320jV\225\t\252\216\241\022\242\212\240\022P\311BPg\221\\\240\032\274-\260Z\242\201\005P\252\304\226\224\313I\334\372 \311g<\366\274\217\023\3438\311\354Xw\270x\236\314[\265\375\224\357r\364\0263\344\211H\326\301E\253\225\352\246\233\252Aw\034\013\327\235.\350\020\033\250b[\312J\311\023\201\356\214\3326\205j\365\240\355\030\334\253<jd\372\033\242&\305|\031\250\350qI2\3130\3762H\251\246C\2302\274\214a\233!*\316\022\355\240'\215a)QD\037\362/q\224\330\242\311\311,\007~8\333!f\3546\341\237\353\023\277z\013`\346b\225@R\321\014\306!UEK\347\305w\017\300\33777*1\021\341N\242\212\202u\323W\301\216\266\2328\302P\311\263\233ak\265|F\311\345G\223Z\304\005\000`\010$/\232\223U`Dhdg\221~mi\245\262\241\334r\364\227\310H\032\327\354.\036\272G{\240\304\216\352V\016;\233\356\303%\246)\273\261\250<\014/\030\241\020\277\023\020\"\0042\220\322u)N\213w\302\2075\321E\347e\331F\344\343z1\037s\202\371WaC\350\242\014\351\370\357Y9,\224ER\232\236\006l\367\250\214\245\001\256;\327""\356,\211\177\224\344\277Q\027\2008G\001\222\355>\344\313\362c\370\305\363\1773\214@<\272n\253,\321&\365\001\250\005\004@iJ\004!\247\031\001U\217)\302\2409)\210\t\022\261\200\344\2453\"2\214\376\305\0026\211N\314J\214\345'<\212\346z\307\345\253,\366\214\270shB\020\221\225\025\225N\201.\003(\234d\016\020{\313o1\023?\216\230\317\177\321\\3\223-q\335\205p\261\206\013ji,\241n\304\201\366p\262\240\t\351\313s\276\215\260B\332\200\241\000\276\2575l\031\254a\206\230Vc\230\354Afl$J!l\310\251\214Sg\";\220\n\347|\356(\3525\264\t\332\300\245\231\231\251\250\366F\204\256\201a\004I?Qm\317\205\r0\341ft\252\335 N$\345k\254\r\"h\274e\270\225p\235\001\20332hu\234TY\3034g\013\257\035\230\031uo\230Y\r\035J\226\303*(3\353\025\260\001\202\245\261ia\020\20615\326c\006f(`\265\363`c\237\000\351\216\025\343\220\205b\007\254[v2\301\266+\314E\232\355\035\344YZ\267\262\225e\202\266H\006Ds\343@\032\242`\251\027Q\257#\004_\330`I\025@ps\r\207i\244\264\034\010\210\214VQ\217\207:2\032%1\014\"@o\036a\003(M\267 \201\353X\341\325[J\244AF\002\010\320\200\205\220\345\003\217\001\317eb\335\232\227\3572\221$\254\030\263s\031D3\023\013c\213n\346\035\301\250\206\000v\260[\311\033\306@J\n\220s*\341\242W-\006\035\206\036\"\227\330,X.:\0011!RC\361R\245j\271\225c,#\002\345-H0\305\004Z\230\242\275\244\r\021]\000\277*(\007I\335S\2613\001\252\207\"\023\370TH\017H\324\242\225+*\370I\30623,\302\210\246Y\250\210\316P\340\200Je`\306B\213#O4I\250A\354\203\331p\020\300.\335\246\355\005\320\247#%\3405\342\344d\322b%K\nW\013\373\314h[\226+\342\221\215\301\226\225A]{\256\257o\021>\270\001\217\025\022\023\220\374\270.\037\242)\343\236hM\037\013\216~J\337\333\331&\273\036\275\275\340I&m\201\247{\346\241\277\273\360\364\247\202\260\251Pq\221\272\006*\221\010\016\222\251:B\177\363j\336\255\235\177\217`e\204\264T\212\323\002\262\310\305`Z*\306En\037v\253\324\335\311\253\304\243\236\320\350o\025\224~\270\005C\003\214\212F\001\365r\272\254\017\2234B\204\322\0258S+\353\336\300\347\n\246\217\000o&_\351\274\241\027\005XD_\2671\252E""\332Tp\213\303H\306%N+\252B\270\350\273\0265+F2*\245\223\332=\375\0222\254\323X\312\355\340\337\245!\260\r\023(\206\3331\370\317\231C\302T\270\321H\265\0355\"\010\n\215\260\201r\035\251\206\002\267\332\335\310\262\302\014\014\217\301\334\251\331^\214\036B\300@\305\364\203BP\233\r`\344A\2063\301\345[\263\231\254\r\257E{c\272x=\216rrt1\030Wz\033\371\321<\351\320\315\200\177y\301c\231\365'o\260\377\251\216_3>O\335\330|\310{\036u\027\267\005\351CY\367\225L\311\315z\031o\260\360M\316\372iC\230\331\347\276\235\324\213GE\307\003\247\020\334\320e\2316\261\374Z\023\303\177l\234\307X\222\340b\216\244Q\314\321\231s\260\244\304\303\035\026\235\306\332\255ce\336\177B|\037\034csJ\371\213\3108\272\323\271\377\227\264\3365\306\257\252\316\264F\227?\210\nSCE&'GV\202\250`\240\340\330\356L+H\326I\022.\334Q\2366\r\002\305\326M:\020\315\201\223\2331\243\007V4\201\021\007#3W#5pM\330}\030b\224\202U\037\347\205\332({\336\032b\265\026\222e\021T\222\034IUy\213\271\"\234(HA\347g0\000";
-    PyObject *data = __Pyx_DecompressString(cstring, 1747, 2);
+    #elif (CYTHON_COMPRESS_STRINGS) == 2 /* compression: bz2 (1746 bytes) */
+const char* const cstring = "BZh91AY&SYR`*\324\000\001\\\177\377\377\377\377\377\377\377\376\377\277\277\377\277\277\377\377\377\300@@@@@@@@@@@@\000@\000P\005\336\356\022[m%\250-Y\300\016\006\247\245&\241\251\3527\252h\036\247\246\003S\nl\024\323C\324\336\246\243OSOF\247\244\311\352d\323M\224\323O)\211\344\004\320\362F'\210F\321\006\232\215\t\220\tO44\0022\211\352h\006\201\211\240\000\000\3202\006#\020\032\r\001\223@\003A\240\010\2111M\221OM3\"\237\242\200\364\203 \302\r=!\352\032h\365\000\014\215\003\021\2044\323'\250x\223\312i\352\020`\t\204\300\230L&\230&#\000L\001\032\0310\t\200\000\000\021\200\230\000\000\031\t\252z)\351M\352z\236T\375\024\323M\250h\017Q\240\000\0324\000\000h\000\000\000\r\000\320i\211\240\377\001,\200i\320*\024AZ\002\\\366AL\234\257\326X\031\2035a\226\257\234\256\213\234^!\340\327\235\321\3518\201\005O\256fe\370\001\177\307R\255\356\001ysH\002\317&&\262\\\251PP\224\212\013c\0214\317\010\026\345|\021\006\201\236=\221\nH\225\004\222I@\254b\r\200E7\200\234\001RY\214+kG\022\351\346U\334\005\260\301@\024\224BH$\240p\256aPA\303kF\201k\324\2609j5\024\205\001\202H\223\220J\"LPp \231\312\320\363\333\000\026\307\\\240b\224\202\002@\241D\306\244\356\222,l\234\251\213\n\305\022\205Q\3312\246\336\327\253\265\316\355m\353\266\342\317m\267\230n\335\270\251\021f\036\036,\315\034\334\334j\203\036x\0315at\306\222\204\206\001u\024\341\326P\223\324Dy\321\027\257\336(y\234wk\222\332F\355\202\2127\301,8^\225X\251\310?\215T\266\313\022\260\354U=\305\323\246\010\n\374)$\n\360\232\2679)\022\371\227\303\355\037M9u\353M\247~\261T-O\027\276\345\007vr\341\216\364\264\213\\\306\342\nT\240\304wB\262\214\250\301\002\004lz\317\362l\300\217f\252-\023}|\237b<\273\265\347\212\027\273\203\177\204\323\325\203\016oF\306<\367\344J\005@\261\262\363, \341\021YQW\033w\302\2467#\271\263+\216\225\335\310,\017|\315\217\300\313h\333?\266 \332v3\204\"u\371|\347Y\216\233~*Z&\004.\004\236x\320\350\021\002\031]4\302\252\263OM\253^\303\342\270=#\262\226\013\373\035\232\214\016V\376X\271\370n~gYT\324#\0277\263\0174\256\365r""B\307\"i\240\036\332\363>\"\260p.\251\300@S\216\024\025\001\r\271[\246\355\374:mLo\377u\231\001=\353|\026v\252\255b\340F\000\311\001\245\252\024\306\260\346\006gM\230\014\241(\310\010P\331\035@\203S\252\031\241\315w\014\215\036)K\376\033<\223\230\252\246>@\315x\034\253\007\022\363\032\245\"r\206\253\366\2570\302\361\r\230\241\t0\014\302\323\013\207I\2508l\337tQ\005;\004\323.\212\330\243\010\004\2562H\250\366\250\220\006\314\321\326 qo\277\t\2258\201\214L\003\005\003*\375Y\374\n\264\226z\347`\235\346\200\325G\023\026\240\316Q.\244\\;\303\227=Z\247\027\035\247SN\222\257\003\013\334\032\244\222\327\262l\373\327\346\306\001\310\250\274l\344W\261\244!\034\245.h\007\025\005Q\225\240\3005\004\302\2069R\2150\221\004\222\217\020\313\372\341\313\327\262\223<7\316I;Z\304\205A\241\225\\\272\0226%\340\002\023\013\245\304\220\220s\231\306\272\202H\300\341\217\256\340\350D\003\206\231\327\"\t\324JlW\302\325\005\364ls\024\2562x?w&\361M\266\352\000\242\034\025\304=\250\341\231\213\230\255\367\n\354r\026\301Z\030\217`v\\\316\231d\304$\226\014\212\235\356X\313\304t\014Bc-\006c\307@Rr\375\022\224\3318\234<\302:t3M\214\027n@\307\206\004\027\2104\032\367\034W\260\325\314\271\202*t5\246\024\031\230u\030\026\362\360\371\0311\351q4\206\261a\020\037,\365\350\2214\002\206\014\353\t\025n\023|+\003\n\210\006\005\00580\024\013j\340DH\020\310\033Jf\233~\327\234\344\003\035\217`@\346J\326\344\027\264T\236E\345\002\371\331`KSM\223\205T\001\357DUL\271,T&\246\302\323i\232\356\030ZE\n\370\210\030\233\350#\022\2118\210P+\"\2207\220K\020X\301\342\022@\325@\3257\240\315\236\233\342/\002\235\334\r\000-Gw\005#JOa\025\201\223V\267c\233c^\217\017\310\024\212\210\005\230;\3731\352O\322\3606\274\205`)\202\303\362\247na,\360Zci[\225uI\335\207J\257\324\022I\235\2742\356\357\250O\330\330\321I\273b\265a\310F\270\016T\210U\202\225\311\234)\356\352q\317\374\347\354\2621\002Y*Ed\201\266\261\016{\302\311Wu\025P\324\312|\232\321\253\333Q\230\330\344l\225\212A[\010\250/p\212g\010\351\362\340\355\203\353\347\021\"6\211""\257\023\037{\333u~\250\3314\267\334y\032\341q\214$^\251\271\034m.\221\365\025$\"\315\322A\215Z\335\245!ZJ-\273;j9\223],w\320y\246\221*\305E\245b^\335\370I\276\001\262J\"\372\224\213\2078p\025e\2256\221\034\205\344\024\235\320\031T\215\004\013Jx\250\261T\t\334\274\351\207b(]`a\376\215C5\236c\020 \211\370Ft\245\210H\013\"\014!0\036e\235\034Z&\316\206\347\360xMJx\021b\344_\303W\014 \324\374:(\303P\031N)\201a\376\201M\354\007\034\351\004\300\241\243\343\262\364@\240\037\317\244\372\320\273.\213\374\325P\226\323\321A\306{\301\350\336\311\207y\363wWYV\323\255Nj9\302\362\261\245\231B]\227\336\251\276\340\353W\3041r\257\332e\241\333\216:[c\343|\233\306n\030t\330^\242\361\263:8\264\375\354\346\217\007\247\244\341\321\345\027\034\362gp=v\274\326$\367\027\201\342q4\001\322\252\212\306\347\013\014\344\314\0340B\1771\214\336\355\026\214\262\177jK<NZ(\244\313K\326\305Dp\220n\354\254\342\036\021H\314\304\032\"4\032#@7\351G\204\034\351@\267K\221\005\247e\221\223\360\266Z\343Zn\324\243\262\252I\2637\376.\344\212p\241 \244\300U\250";
+    PyObject *data = __Pyx_DecompressString(cstring, 1746, 2);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1691 bytes) */
-const char* const cstring = "x\332uTK{\323\306\032\216\323\244q\017N\261\301!N\311E\312\245\t\205\004\234\370<\341\224\002\217!)O/'\215\223\000\205\266\3143\226\306\216Nl\311\326\005\022\n-\313,\265\234\345,\265\234\245\226^z9K-\375\023\362\023\372\215d\347P\332.4\363\315\355\273\274\357\373\351\376\216\345\022\305=\304\256\362\360\304=\264L\305p\024\2354\214*\261\261K\032'\212\343\332\206\346\022[^2\225\335\355\335\325\322\355\222\202M]\261\311\377\210\346:\212\343U\265\006v\034\342(VM\251zF\3035L\305=i\021gM\371\246\246\234X\236b\022\242+\256\245\264\340\336\373\017\334Cb*\016q\245\241,c\323\264\\\354\032\226\211\340\271a\326\227\025\335\260!\210\361\222\310\327_\343\206C\326\260\256#\270Gt\303\301\325\006!\246\034\353\232\341$\226\356h\207D\367\032\304^k\235\034\177%\3637\353\216\345\331\032\271\027;@h\367\344\030\276-\250\013\355\220cw\217\324\366\007o\266\315\272a\222\017\226k\010\331\260\326\010\322b\220\020\372\353\005(\302\201\334\377\371J\235\230\200\251\215\016-\030\r\013\267Z\304\324\261sbj\206\265\246Y\266\345\001l\304A(\306\006\325\211k\270\244)\227\260\215\014\200\304\306\032\251b\355H70\204kb\023\203\345 \300\241e\231\006\224\016\217uYT2\021\323k\306,\"T\363L\r\241\0172\200\010r\257\2376\252\333^\313B\206\036\317N2\"\035\273X^G5\303\214g\3034 \337\330l\342\343dN\216\234x@\3301\352\220\330`\t\227 \031\234,\222\244!OCG\206\203\316\213\226\205:ML\200+\231A\337\032\354$Y p\005 \300\010b\004\000\344\265\330r\006s|\355|a\350\200F\323\222\014\000\036\310\304\315d&\257\020jY-\030@\004@\221v\344x\315de\023\307k\270\211\335\007E\232R\311\211\345\231-C;\002\207\037p\233\234\276t\245\374d\220\266\207\033I@\033\032\305j\236\313\007\375EH\347\033\344\03044p\353\220F-\226T?o\260tR\303qv\347BC\177#:\347\320\253\325\000\340\344\202\013\006B^\013\200!\036\010\177p\375%nx\304yW>[\034\372d\236\345\242\264*\007\205\245\316>\036\372\344*]e\266\270\366e\270\020VB\253\273'~\300\002W\345\211B\333Q:s\372\235\337\2162s\364\025\323\003U\\\277\023\026\243L\326\377\224\342({\331\277C\353\254\022\345W\202T0""\313\333Qv\221\225\331O|\214\267\303\330\367\370\351\016U\243\314%\177\205\252\342\352\315\240\315\373\333\337\370\225(3\351{\264L+\2603~-HE\231%\026\3339\377\002-F\331\031\372\024\234Uz\377\2172\001\247\271\t\177[L\255\006\225\000G\371I\277MS\364\n\244\206\243B\221\347\370Z'\025\025\326\002,\003\361\251P\215\nS\322\243\254\031r~\337\355{\311O\364\262\363l9\310\005j\224\030Q\3763\310:?C\341p\231\265\317\362C\343Kl+\370\027\237\347[q]\343\213,\006a\024\252\310\312\332\341\355Yzh\034\000c\037\261\022\363\202mH\006\n\237\206\372\366\3310\003S\201i\201\355\201\273\270\304Q\3771U\351\006\305\200q6\357o\323\t0mv\211m0-N%?)&\257\2015\037\224\203g\274*n\177\333U\273\353\335J\027J\375\"P\203\222\270Y\356\344:K\342\3213\361\354\271x\376B\274h\211V[\264\3558\200\310\002\275\262\332\237\007\205\335\220\260\304\014\365\262W\304\225\317Y\0250\317K%\344\347\305\374\355p8T\341\345\304\024\035\245\217\231\n\005\026\256\322u\000\353\007^\342o;\345\316~w\270\253F\323s\364-d\264\317\207\241>e-h\206\305\260\034)7\202\262|\\\360_\263<`Z\230\246\333l\202a\326\376\340\301\002\273\013\314\\\346\0178\216\026\327\371j\330\006\306\026o\361T\017\310\354\277\225\200~\3067\303\371\360\373.\320\t\252`&/G\205\317\245\000\003\310\353zP\354\001\261i\211\343X\242!\251\222\273,\0051\253b\345^\250\213\007\373b\377@\034\0006\277\210_^D\371\002\035\243\036\020\277\037\244\304\265\377\2049\251\215\031\372D,l\360\242d5\314\311zK\324\001\256\246\241\232\340\000\030\\\t\227B\250@\322\260\002\331OK\331\325y%\232\236\221J\234\364\233\254\310\266\203K\220S~\216\266c\364\204L?*\314\322F\222+\300-\321\330\t\226\304\315\373q\2651 \017\201\n\tZ\244\250\2758n{\020u\022\210\370s\324e\211\342L\002\257Kc^@7bn\203\257\363Jo\372\213`\025\332m4\334\013\235\216\332)F\323\300f\211\227\371\317\240\016\365\237\274\366b\207\343s\320\305\240\343>\210QVv9\026\313\233\340p$,'J=?\234\245:\223\022\311)\364w\320\222\313\241\233\256\370\207R\302=\220\360\367,\003\365\000\215o\330:{\026T\371\210$m\252\227\237\025\263\233\334\215u\002""\247q\005\260\253\262I\3318\262\303^\005:W\305\306\243N\273\373Qw\243\253\211\n0\367X\376U\306d\024Q\332\356T\006\345o\262~SO\310\036\004\177\277\262y\t\3612s\305\365\273\360\007;\352\346\272\262{\374\267\354\0013\002\233\347\342ps\364M\260\036\234\273)\211\271{!\016\337t\377-vc\201$>\373G_\205\345\360y\307\353\376\027:\253\1772E/\262v\220\341\337\206\244sW\354Vzy\205\215\0011\240J\334\037b\252cK2&\227\362\341\002S{\351\213\247\355w\251hD\352\247\306\313\357R\240\335\321OO\017\374\253t\213]\220\255\374\260S\352\274\025\007?\212\037\353\242~$\216^\213\327\277\235\r\r\375\236\332\033\206io\370\211\234\236\014?\035\216F2\247\217\374\242\3775\275\001\221F\306\336\275<}\n\177\217<\020\224\276\344\253Q\032\376\211\275t\201\246\344\031\374\276/\212\213\267$\023\374i\370]\347U\027\367\376\274\003i\365F@\273B\271\305/\204w:G\242\262\027\215\\\366\357\263\225X\277\340\344\215\277\t\177\3034\374^\305\372VgG\354\355G#\027N\213\177\000\255@\033\232";
-    PyObject *data = __Pyx_DecompressString(cstring, 1691, 1);
+    #elif (CYTHON_COMPRESS_STRINGS) != 0 /* compression: zlib (1678 bytes) */
+const char* const cstring = "x\332uTKw\323H\026\216\335\311\304=8\215\r\016q\232<\244<:\241!\006'\231\023fh\340\230N\340\364c\322qB\206\023\350\246N\331*;\002[\262^\220\314\300\014\313,\265\254e-\265\324RK/\275\254\245\226\376\t\371\ts\253dg\200\236^\250\352\326\353>\276\357\273z\270k\272Dq\217\261\253|\177\352\036\233\206\242;\212FZz\215\330\330%\255S\305qm\275\356\022[\\2\224\275\235\275\265\315\273\233\n64\305&\257H\335u\024\307\253\325[\330q\210\243\230\r\245\346\351-W7\024\367\264C\234\222\362CC95=\305 DS\\S\351\300\275\217\037\270\307\304P\034\342\nCY\301\206a\272\330\325M\003\301s\335h\256(\232nC\020\375\r\021\257\037\343\226CJX\323\020\334#\232\356\340Z\213\020C\214\315\272\356$\226\346\324\217\211\346\265\210]\352\234\236|'\3627\232\216\351\331u\362@:@h\357\364\004\276m\250\013\355\222\023w\2374\016\206ov\214\246n\220\317\226%\204lX\327\t\252K\220\020\372\375\005(\302\201\334\377\370J\223\030\200\251\215\216M\030u\023w:\304\320\260sj\324u\263T7m\323\003\330\210\203\220\304\0065\211\253\273\244-\226\260\215t\200\304\306uR\303\365\327\232\216!\\\033\033\030,\007\001\016\035\323\320\241tx\254\211\242\222\211\030^[\262\210P\3033\352\010}\226\001D\020{\203\264Q\323\366:&\32259;\311\2104\354bq\0355tC\316\272\241C\276\322l\343\223dN\216\0349 \354\350MHl\270\204K\203\\\223ubC\252\272\206t\007]\324-ju\332\230\000]\"\211\2015\334I\022A\340\rp\200\021\364\010\030\210k\322r\206\263\274v\261\3205\000\244m\n\022\000\022d\340v2\223\267\010u\314\016\014\240\003`\251\376\332\361\332\311\312&\216\327r\023{\200\2130\205\230\023\3133:z\37558\374\214\336\344\364\215+\024(\202X\036n%\001m\350\025\263}\241 \364;-]l\220\023\220\321\320\255CZ\r\251\252A\336`i\244\201ev\027ZC\377Gw\316\261\327h\000\300\311\005\027\014\204\274\016\000C<\320\376\360\372\033\334\362\210\363\241r\2764\362\345\002\313\307\031U\014\nK\235\377i\344\313\353t\215\331\374\306\337\242\305\250\032\231\275}\376\013\346\270&N\024j\305\231\354\331O\276\025g\347\351[\246\005*\277y/*\307\331\234\377\025\305q\356\252\177\2176Y5.\254\006\251`.""\264\342\334\022\253\260\027\341xhE\322\367\304\331.U\343\354\025\177\225\252\374\372\355\300\n\007\333?\370\3258;\345{\264B\253\2603q#H\305\331e&\355\274\177\211\226\343\334,}\006\316\252\375\377E\231\204\323\374\244\277\303\247\327\202j\200\343\302\224o\321\024\275\006\251\341\270X\016\363a\251\233\212\213\245\000\213@\341t\244\306\305i\341Q\324\0149\177\354\366\243\344'\373\271\005\266\022\344\0035N\214\270\3605d]\230\245p\270\302\254\363\302\310\3042\333\016\376\034.\204\333\262\256\211%&A\030\203*r\242vx{\236\031\231\000\300\330\027l\223y\301\016$\003\205\317@}\007,\315\300T`Zd\373\340N\2268\346\037R\225nP\014\030\347\n\376\016\235\004\323fW\330\006\253\313T\nS|\352\006X\013A%8\nk\374\356\217=\265\267\336\253\366\240\324o\0035\330\344\267+\335|w\231?9\342G\317\371\363\227\374e\207w,n\3312\000\317\001\275\242\332_\207\205\335\022\260H\206\372\271k\374\3327\254\006\230\027\204\022\n\013|\341n\224\216Tx99M\307\350!S\241\300\342u\272\016`\375\022n\206\357\273\225\356A/\335S\343\231y\372\0362:\010\323P\237R\n\332Q9\252\304\312\255\240\"\036\027\375\177\262\002`Z\234\241;l\222af}\366`\221\335\007f\256\206\217B\034/\255\207k\221\005\214-\335\tS} s\360V\000\372u\270\025-D?\367\200NP\0053\302J\\\374F\0100\200\274n\006\345>\020\233\0218\216'\032\022*\271\317R\020\263\306W\037D\032\177t\300\017\236\362\247\200\315o\374\267\227q\241H\307\251\007\304\037\004)~\343\257Q^hc\226\376\203/n\204e\301j\224\027\365nR\007\270\232\201j\202\247\300\340j\264\034A\005\202\206U\310~F\310\256\031V\343\231Y\241\304)\277\315\312l'\270\0029\025\346\251%\321\343\"\375\2708G[I\256\000\267@c7X\346\267\037\312j% \337\003\025\002\264XQ\3732\2565\214:\005D|\032uE\2408\233\300\353R\311\013\350\206\317o\204\353a\265?\363m\260\006\3556\026\355GNW\355\226\343\031`s3\254\204\277\202:\324?\362\332\227\016'\346\241\213A\307\003\020\343\234\350r\314W\266\300\341hTI\224zq8G5&$\222W\350\177@Kn\010\335t\315?\026\022\356\203\204\177fY\250\007h|\307\326\331QP\013G\005i\323\375\302\034\237\333\n]\251\0238\225""\025\300\256\312\246D\343\210\016{\033h\241\3127\236t\255\336\027\275\215^\235W\201\271\303OO\206\345o\261ASO\336\224M\342\377\213-\010\210K\201\306\327\205\207\224\354\234\233\301\272\350\232(%c\315\323w\260\256\016}l\362\371\007\021\216\336\365\376\302\367\244:\022\207\203\243\357\242J\364\274\353\365\376\016m58\231\246\227\231\025d\303\037#\322\275\317\367\252\375\202\302\306\201\025\220$\036\014\222gi\t\272\304R<\\dj?s\371\314\372\220\212G\205x\032a\345C\n\204;\366\325\331S\377:\335f\227D\037?\356j\2755\376\354\005\177\361\212\2772\270\361\376|d\344\337\251Gi\230\036\245\017\305t\230>\022\323Q\372y:\036\315\236=\361\313\376cz\013\242\215\216\177xs\366\014~\037\005`(s\305W\343\014\374\024\373\231\"M\2113\370\177_\346\227\357\010*\302g\321O\335\267=\334\377t\007R\353\217\202x\271r'\274\024\335\353\276\346\325\375x\364\252\377\220\255J\001\203\223w\376\026\374\0163\360\177\345\353\333\335]\276\177\020\217^:+\377\027\"\261\033\n";
+    PyObject *data = __Pyx_DecompressString(cstring, 1678, 1);
     if (unlikely(!data)) __PYX_ERR(0, 1, __pyx_L1_error)
     const char* const bytes = __Pyx_PyBytes_AsString(data);
     #if !CYTHON_ASSUME_SAFE_MACROS
     if (likely(bytes)); else { Py_DECREF(data); __PYX_ERR(0, 1, __pyx_L1_error) }
     #endif
-    #else /* compression: none (2634 bytes) */
-const char* const bytes = "?Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.add_notedisableenablegcisenabledscheduler.pyx<stringsource>False__Pyx_PyDict_NextRefSchedulerEngineSchedulerEngine.__reduce_cython__SchedulerEngine.__setstate_cython__SchedulerEngine.generar_horarioappendasyncio.coroutines__class_getitem__cline_in_tracebackdia_semanadias_disponibles__dict___dictenumerate__func__generar_horarioget__getstate__grupo_idgruposgrupos_datahora_finhora_iniciohora_maxhora_minhorashoras_asignadashoras_max_diahoras_semanalesid_is_coroutineitemsmaestro_idmaestrosmaestros_data__main__materia_idmateriasmaterias_datamaterias_ids__module____name____new__pop__pyx_checksum__pyx_result__pyx_state__pyx_type__pyx_unpickle_SchedulerEngine__pyx_vtable____qualname__random__reduce____reduce_cython____reduce_ex__schedulerself__set_name__setdefault__setstate____setstate_cython__shufflestate__test__updateuse_setstatevalues\200A\360$\000\t\"\240\021\330\010!\240\021\330\010 \240\001\360\006\000\t\033\230-\240r\320):\270#\270Q\270o\310R\320Oa\320ab\360\006\000\t \230q\330\010\014\210K\220q\330\014\037\230w\240d\250!\320+;\2701\330\014\020\220\016\230a\330\020\023\220;\230g\240Q\330\024(\250\001\250\036\260q\330\020$\240A\240[\260\007\260q\270\001\360\006\000\t\r\210N\230!\330\014\022\220(\230!\320\033/\250q\260\001\360\006\000\t\r\210I\220Q\330\014\027\220u\230A\230Q\360\006\000\r)\250\001\330\014%\240Q\360\006\000\r\021\220\013\2301\330\020\035\230W\240A\240Q\340\020\023\220;\230g\240Q\330\024\025\360\006\000\021\025\220E\320\031-\250Q\250a\330\024\027\220q\230\001\230\026\230w\240a\330\0301\260\021\260.\300\001\330\030.\250a\250q\260\001\260\031\270!\330\030\031\360\006\000\r\"\240\021\330\014\020\220\013\2301\330\020\035\230W\240A\240Q\330\020\023\220;\230g\240Q\330\024\025\340\020\"\240'\250\021\250!\330\020\"\240'\250\021\330\024\032\230!\330\024\035\230Q\330\024'\240q\360\024""\000\r%\240D\250\n\260\"\260D\270\001\360\006\000\r$\2401\330\014\020\220\005\220Q\330\020(\250\001\250\021\250!\360\010\000\r \230q\240\003\2404\240u\250E\260\021\260!\330\014\034\230A\230S\240\002\240!\330\014 \240\002\240#\240R\240q\360\006\000\r\021\220\005\220U\230!\2303\230a\230q\330\020\024\220E\230\025\230a\230r\240\022\2403\240c\250\021\250!\330\024\027\320\027)\250\021\250\"\250A\250Y\260b\3208J\310!\3102\310Q\310a\330\030*\250!\2504\320/A\300\021\300%\320GY\320YZ\320Z^\320^p\320pq\320qr\360\006\000\r\021\320\020 \240\001\330\020\035\230\\\250\021\250!\330\020\"\240,\250a\250q\330\020$\240A\340\020\026\320\026&\240b\250\001\330\024!\240\021\330\024\"\320\"8\270\002\270!\360\006\000\025\031\230\005\230U\240!\2401\330\030\033\2302\230W\240O\2604\260}\300A\300S\310\002\310!\330\034\037\230}\250A\250S\260\002\260!\330 .\250m\2701\270A\330 ,\250A\360\006\000\025\030\220z\240\024\240Q\330\030\034\230E\240\025\240a\240q\330\034\037\230}\250A\250S\260\002\260!\330 #\240=\260\001\260\023\260B\260a\330$2\260-\270q\300\001\330$0\260\001\340\024\027\220z\240\024\240Q\330\030(\250\001\250\032\2607\270\"\270L\310\001\330\030%\240Q\240n\260A\330\030&\240d\250!\2501\330\030+\2501\340\030\031\360\010\000\r\021\220\007\220u\230A\230Q\340\020\023\220=\240\001\240\025\240b\320(>\270d\320BS\320ST\320TY\320Y]\320]^\330\024\030\230\007\230u\240A\240S\250\001\320)9\270\021\270!\330\030\035\230V\320#3\2601\260D\270\001\270\021\330\030\033\2304\230s\240!\330\034,\250A\250T\260\021\260(\270%\270q\330\034)\250\021\250(\260!\330\034-\250Q\250g\260Q\330\034\035\360\006\000\021\027\220m\2401\240E\250\022\2501\330\024\037\230q\360\006\000\025\031\320\030(\250\001\330\030\036\230l\250!\2501\330\030$\240A\330\030\034\230N\250%\320/?\270q\300\001\330\034\037\230}\250C\250q\330 ,\250A\330 !\340\030\033\2304\230q\330\034,\250A\250T\260\027\270\002\270%\270q\330\034)\250\021\250(\260!\330\034'\240q\330\034\035\360\006\000\025\030\220t\2301\330\030\033\2303\230a\320\0373\2602\260Q\340\034*\250-""\260q\270\005\270R\270s\300!\3001\330\034\"\320\"4\260A\260\\\300\021\300!\330\034,\250A\250T\260\027\270\002\270%\270q\330\034)\250\021\250(\260!\340\034\035\360\006\000\r\037\230a\330\014\020\220\007\220u\230A\230Q\330\020\037\230w\240a\320'7\260q\270\004\270A\360\006\000\r\021\220\007\220u\230A\230Q\330\020\036\230d\240!\360\006\000\021 \230\177\250a\250t\2601\330\020\026\220h\230a\230q\340\020\024\220L\240\014\250A\330\024\027\220|\2402\240Y\250b\260\004\260A\330\030\031\340\024\036\320\0367\260t\2701\270A\330\024\027\220t\2301\330\030\031\340\024!\240\027\250\001\250\021\330\024'\240w\250d\260!\3203G\300q\310\003\3103\310c\320QT\320TU\330\024(\250\007\250t\2601\3204E\300Q\360\006\000\025\030\220t\2307\240!\330\030\031\360\006\000\025$\2401\330\024\027\220{\240\"\240A\330\030'\240t\320+=\270Q\270k\310\021\310!\330\024\027\220}\240B\240i\250r\260\021\330\030\031\340\024\037\230|\2502\250Q\360\006\000\025\030\220t\2304\320\037>\270a\270|\3105\320P]\320]^\330\030\031\360\006\000\025\030\220t\2304\320\037<\270A\270Z\300u\310M\320YZ\330\030\031\360\006\000\025\031\230\017\240q\250\014\260J\270e\300=\320PQ\340\024 \240\007\240q\330\030&\240a\330\030&\240a\330\030$\240A\330\030&\240a\330\030'\240q\330\030$\240A\360\006\000\025#\240!\340\010\017\210q\200\001\330\004-\250Q\250f\260A\200\001\360\010\000\005\016\210T\220\033\230D\240\013\2504\320/C\3004\300}\320TX\320Xg\320gk\320kz\320z~\360\000\000\177\001R\002\360\000\000R\002V\002\360\000\000V\002W\002\330\004\014\210G\2201\220F\230,\240a\330\004\007\200v\210W\220E\230\024\230Q\330\010\022\220!\330\010\027\220q\340\010\030\230\001\330\004\007\200q\330\010\017\320\0170\260\004\260A\260W\270K\300w\310a\340\010\017\320\0170\260\004\260A\260W\270K\300q\200\001\340\004\037\230q\320 0\260\013\270;\300k\320QR\330\004\023\220?\240(\250!\2501\330\004\007\200|\2207\230!\330\0101\260\021\3202D\300N\320RS\330\004\013\2101";
+    #else /* compression: none (2638 bytes) */
+const char* const bytes = "?Note that Cython is deliberately stricter than PEP-484 and rejects subclasses of builtin types. If you need to pass subclasses then set the 'annotation_typing' directive to False.add_notedisableenablegcisenabledscheduler.pyx<stringsource>False__Pyx_PyDict_NextRefSchedulerEngineSchedulerEngine.__reduce_cython__SchedulerEngine.__setstate_cython__SchedulerEngine.generar_horarioappendasyncio.coroutines__class_getitem__cline_in_tracebackdia_semanadias_disponibles__dict___dictenumerate__func__generar_horarioget__getstate__grupo_idgruposgrupos_datahora_finhora_iniciohora_maxhora_minhorashoras_asignadashoras_max_semanahoras_semanalesid_is_coroutineitemsmaestro_idmaestrosmaestros_data__main__materia_idmateriasmaterias_datamaterias_ids__module____name____new__pop__pyx_checksum__pyx_result__pyx_state__pyx_type__pyx_unpickle_SchedulerEngine__pyx_vtable____qualname__random__reduce____reduce_cython____reduce_ex__schedulerself__set_name__setdefault__setstate____setstate_cython__shufflestate__test__updateuse_setstatevalues\200A\360$\000\t\"\240\021\330\010!\240\021\330\010 \240\001\360\006\000\t\033\230-\240r\320):\270#\270Q\270o\310R\320Oa\320ab\360\006\000\t \230q\330\010\014\210K\220q\330\014\037\230w\240d\250!\320+;\2701\330\014\020\220\016\230a\330\020\023\220;\230g\240Q\330\024(\250\001\250\036\260q\330\020$\240A\240[\260\007\260q\270\001\360\006\000\t\r\210N\230!\330\014\022\220(\230!\320\033/\250q\260\001\360\006\000\t\r\210I\220Q\330\014\027\220u\230A\230Q\360\006\000\r)\250\001\330\014%\240Q\360\006\000\r\021\220\013\2301\330\020\035\230W\240A\240Q\340\020\023\220;\230g\240Q\330\024\025\360\006\000\021\025\220E\320\031-\250Q\250a\330\024\027\220q\230\001\230\026\230w\240a\330\0301\260\021\260.\300\001\330\030.\250a\250q\260\001\260\031\270!\330\030\031\360\006\000\r\"\240\021\330\014\020\220\013\2301\330\020\035\230W\240A\240Q\330\020\023\220;\230g\240Q\330\024\025\340\020\"\240'\250\021\250!\330\020\"\240'\250\021\330\024\032\230!\330\024\035\230Q\330\024'\240q\360\024""\000\r%\240D\250\n\260\"\260D\270\001\360\006\000\r$\2401\330\014\020\220\005\220Q\330\020(\250\001\250\021\250!\360\010\000\r \230q\240\003\2404\240u\250E\260\021\260!\330\014\034\230A\230S\240\002\240!\330\014 \240\002\240#\240R\240q\360\006\000\r\021\220\005\220U\230!\2303\230a\230q\330\020\024\220E\230\025\230a\230r\240\022\2403\240c\250\021\250!\330\024\027\320\027)\250\021\250\"\250A\250Y\260b\3208J\310!\3102\310Q\310a\330\030*\250!\2504\320/A\300\021\300%\320GY\320YZ\320Z^\320^p\320pq\320qr\360\006\000\r\021\320\020 \240\001\330\020\035\230\\\250\021\250!\330\020\"\240,\250a\250q\330\020$\240A\340\020\026\320\026&\240b\250\001\330\024!\240\021\330\024\"\320\"8\270\002\270!\360\006\000\025\031\230\005\230U\240!\2401\330\030\033\2302\230W\240O\2604\260}\300A\300S\310\002\310!\330\034\037\230}\250A\250S\260\002\260!\330 .\250m\2701\270A\330 ,\250A\360\006\000\025\030\220z\240\024\240Q\330\030\034\230E\240\025\240a\240q\330\034\037\230}\250A\250S\260\002\260!\330 #\240=\260\001\260\023\260B\260a\330$2\260-\270q\300\001\330$0\260\001\340\024\027\220z\240\024\240Q\330\030(\250\001\250\032\2607\270\"\270L\310\001\330\030%\240Q\240n\260A\330\030&\240d\250!\2501\330\030+\2501\340\030\031\360\010\000\r\021\220\007\220u\230A\230Q\340\020\023\220=\240\001\240\025\240b\320(>\270d\320BS\320ST\320TY\320Y]\320]^\330\024\030\230\007\230u\240A\240S\250\001\320)9\270\021\270!\330\030\035\230V\320#3\2601\260D\270\001\270\021\330\030\033\2304\230s\240!\330\034,\250A\250T\260\021\260(\270%\270q\330\034)\250\021\250(\260!\330\034-\250Q\250g\260Q\330\034\035\360\006\000\021\027\220m\2401\240E\250\022\2501\330\024\037\230q\360\006\000\025\031\320\030(\250\001\330\030\036\230l\250!\2501\330\030$\240A\330\030\034\230N\250%\320/?\270q\300\001\330\034\037\230}\250C\250q\330 ,\250A\330 !\340\030\033\2304\230q\330\034,\250A\250T\260\027\270\002\270%\270q\330\034)\250\021\250(\260!\330\034'\240q\330\034\035\360\006\000\025\030\220t\2301\330\030\033\2303\230a\320\0373\2602\260Q\340\034*\250-""\260q\270\005\270R\270s\300!\3001\330\034\"\320\"4\260A\260\\\300\021\300!\330\034,\250A\250T\260\027\270\002\270%\270q\330\034)\250\021\250(\260!\340\034\035\360\006\000\r\037\230a\330\014\020\220\007\220u\230A\230Q\330\020\037\230w\240a\320'7\260q\270\004\270A\360\006\000\r\021\220\007\220u\230A\230Q\330\020\036\230d\240!\360\006\000\021 \230\177\250a\250t\2601\330\020\026\220h\230a\230q\340\020\024\220L\240\014\250A\330\024\027\220|\2402\240Y\250b\260\004\260A\330\030\031\340\024\036\320\0367\260t\2701\270A\330\024\027\220t\2301\330\030\031\340\024!\240\027\250\001\250\021\330\024'\240w\250d\260!\3203G\300q\310\003\3103\310c\320QT\320TU\330\024'\240w\250d\260!\3203G\300q\360\006\000\025\030\220t\2307\240!\330\030\031\360\006\000\025+\250!\330\024\027\220{\240\"\240A\330\030.\250d\3202G\300q\310\001\330\024\027\320\027+\2502\250Y\260b\270\001\330\030\031\340\024\037\230|\2502\250Q\360\006\000\025\030\220t\2304\320\037>\270a\270|\3105\320P]\320]^\330\030\031\360\006\000\025\030\220t\2304\320\037<\270A\270Z\300u\310M\320YZ\330\030\031\360\006\000\025\031\230\017\240q\250\014\260J\270e\300=\320PQ\340\024 \240\007\240q\330\030&\240a\330\030&\240a\330\030$\240A\330\030&\240a\330\030'\240q\330\030$\240A\360\006\000\025#\240!\340\010\017\210q\200\001\330\004-\250Q\250f\260A\200\001\360\010\000\005\016\210T\220\033\230D\240\013\2504\320/F\300d\310-\320W[\320[j\320jn\320n}\360\000\000~\001B\002\360\000\000B\002U\002\360\000\000U\002Y\002\360\000\000Y\002Z\002\330\004\014\210G\2201\220F\230,\240a\330\004\007\200v\210W\220E\230\024\230Q\330\010\022\220!\330\010\027\220q\340\010\030\230\001\330\004\007\200q\330\010\017\320\0170\260\004\260A\260W\270K\300w\310a\340\010\017\320\0170\260\004\260A\260W\270K\300q\200\001\340\004\037\230q\320 0\260\013\270;\300k\320QR\330\004\023\220?\240(\250!\2501\330\004\007\200|\2207\230!\330\0101\260\021\3202D\300N\320RS\330\004\013\2101";
     PyObject *data = NULL;
     CYTHON_UNUSED_VAR(__Pyx_DecompressString);
     #endif
@@ -10518,8 +9965,8 @@ const char* const bytes = "?Note that Cython is deliberately stricter than PEP-4
   }
   {
     PyObject **numbertab = __pyx_mstate->__pyx_number_tab + 0;
-    int8_t const cint_constants_1[] = {0,-1,1,2,3,4,8,100};
-    int32_t const cint_constants_4[] = {168994040L};
+    int8_t const cint_constants_1[] = {0,-1,1,2,3,4,15,100};
+    int32_t const cint_constants_4[] = {129274947L};
     for (int i = 0; i < 9; i++) {
       numbertab[i] = PyLong_FromLong((i < 8 ? cint_constants_1[i - 0] : cint_constants_4[i - 8]));
       if (unlikely(!numbertab[i])) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -10572,7 +10019,7 @@ static int __Pyx_CreateCodeObjects(__pyx_mstatetype *__pyx_mstate) {
   {
     const __Pyx_PyCode_New_function_description descr = {1, 0, 0, 4, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 1};
     PyObject* const varnames[] = {__pyx_mstate->__pyx_n_u_self, __pyx_mstate->__pyx_n_u_state, __pyx_mstate->__pyx_n_u_dict_2, __pyx_mstate->__pyx_n_u_use_setstate};
-    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_mstate->__pyx_kp_b_iso88591_T_D_4_C4_TXXggkkzz_R_R_V_V_W_G1, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
+    __pyx_mstate_global->__pyx_codeobj_tab[1] = __Pyx_PyCode_New(descr, varnames, __pyx_mstate->__pyx_kp_u_stringsource, __pyx_mstate->__pyx_n_u_reduce_cython, __pyx_mstate->__pyx_kp_b_iso88591_T_D_4_Fd_W_jjnn_B_B_U_U_Y_Y_Z_G, tuple_dedup_map); if (unlikely(!__pyx_mstate_global->__pyx_codeobj_tab[1])) goto bad;
   }
   {
     const __Pyx_PyCode_New_function_description descr = {2, 0, 0, 2, (unsigned int)(CO_OPTIMIZED|CO_NEWLOCALS), 16};

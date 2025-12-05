@@ -49,14 +49,15 @@ async def upload_maestros_csv(
 ):
     """
     Carga maestros desde un archivo CSV
-    Formato esperado: nombre,email,horas_max_dia,materias,dias_disponibles
+    Formato esperado: nombre,email,horas_max_semana,materias,dias_disponibles
 
+    - horas_max_semana: máximo de horas que puede dar por semana (por defecto 15)
     - materias: lista separada por | de nombres de materias que puede impartir
     - dias_disponibles: numeros separados por | (0=Lun, 1=Mar, 2=Mie, 3=Jue, 4=Vie, 5=Sab)
 
     Ejemplo:
-    nombre,email,horas_max_dia,materias,dias_disponibles
-    Dr. Juan Perez,juan@upv.edu.mx,8,INGLES I|INGLES II|INGLES III,0|1|2|3|4|5
+    nombre,email,horas_max_semana,materias,dias_disponibles
+    Dr. Juan Perez,juan@upv.edu.mx,15,INGLES I|INGLES II|INGLES III,0|1|2|3|4|5
     """
     try:
         # Leer archivo CSV
@@ -80,18 +81,18 @@ async def upload_maestros_csv(
         # Insertar maestros en la base de datos
         for idx, row in enumerate(csv_reader, start=2):
             try:
-                # Obtener horas_max_dia, usar 8 por defecto si no existe
-                horas_max_dia = row.get("horas_max_dia", "8")
+                # Obtener horas_max_semana, usar 15 por defecto si no existe
+                horas_max_semana = row.get("horas_max_semana", "15")
                 try:
-                    horas_max_dia = int(horas_max_dia)
+                    horas_max_semana = int(horas_max_semana)
                 except ValueError:
-                    horas_max_dia = 8
+                    horas_max_semana = 15
 
                 maestro = Maestro(
                     nombre=row["nombre"].strip(),
                     email=row["email"].strip(),
                     numero=row.get("numero", "").strip(),
-                    horas_max_dia=horas_max_dia,
+                    horas_max_semana=horas_max_semana,
                 )
                 db.add(maestro)
                 db.flush()  # Para obtener el ID
@@ -166,15 +167,22 @@ async def upload_maestros_csv(
 def get_maestros(db: Session = Depends(get_db)):
     """Obtiene todos los maestros registrados"""
     maestros = db.query(Maestro).all()
+    total = len(maestros)
+
     return {
-        "total": len(maestros),
+        "total": total,
+        "minimo_maestros": MINIMO_MAESTROS,
+        "puede_eliminar": total > MINIMO_MAESTROS,
+        "grupos_base_por_cuatrimestre": GRUPOS_BASE,
+        "maestros_por_grupo_extra": MAESTROS_POR_GRUPO_EXTRA,  # 3 maestros por grupo extra
+        "mensaje_grupos": f"Para agregar 1 grupo extra a cualquier cuatrimestre, necesitas aproximadamente {MAESTROS_POR_GRUPO_EXTRA} maestros adicionales.",
         "maestros": [
             {
                 "id": m.id,
                 "nombre": m.nombre,
                 "email": m.email,
                 "numero": m.numero if hasattr(m, "numero") else "",
-                "horas_max_dia": m.horas_max_dia,
+                "horas_max_semana": m.horas_max_semana,
                 "materias": (
                     [
                         {"id": mm.materia_id, "nombre": mm.materia.nombre}
@@ -226,7 +234,7 @@ class MaestroCreate(BaseModel):
     nombre: str
     email: str
     numero: str = ""
-    horas_max_dia: int = 8
+    horas_max_semana: int = 15  # Máximo 15 horas por semana
     materia_ids: list[int] = []
     dias_disponibles: list[int] = []  # Lista de dias: 0=Lunes, 1=Martes, ..., 4=Viernes
 
@@ -246,7 +254,7 @@ def crear_maestro(maestro_data: MaestroCreate, db: Session = Depends(get_db)):
             nombre=maestro_data.nombre.strip(),
             email=maestro_data.email.strip(),
             numero=maestro_data.numero.strip() if maestro_data.numero else "",
-            horas_max_dia=maestro_data.horas_max_dia,
+            horas_max_semana=maestro_data.horas_max_semana,
         )
         db.add(maestro)
         db.commit()
@@ -275,7 +283,7 @@ def crear_maestro(maestro_data: MaestroCreate, db: Session = Depends(get_db)):
                 "nombre": maestro.nombre,
                 "email": maestro.email,
                 "numero": maestro.numero,
-                "horas_max_dia": maestro.horas_max_dia,
+                "horas_max_semana": maestro.horas_max_semana,
                 "materias": maestro_data.materia_ids,
                 "dias_disponibles": maestro_data.dias_disponibles,
             },
@@ -299,7 +307,7 @@ def actualizar_maestro(
         maestro.nombre = maestro_data.nombre.strip()
         maestro.email = maestro_data.email.strip()
         maestro.numero = maestro_data.numero.strip() if maestro_data.numero else ""
-        maestro.horas_max_dia = maestro_data.horas_max_dia
+        maestro.horas_max_semana = maestro_data.horas_max_semana
 
         # Eliminar materias anteriores
         db.query(MaestroMateria).filter(
@@ -335,7 +343,7 @@ def actualizar_maestro(
                 "nombre": maestro.nombre,
                 "email": maestro.email,
                 "numero": maestro.numero,
-                "horas_max_dia": maestro.horas_max_dia,
+                "horas_max_semana": maestro.horas_max_semana,
             },
         }
     except HTTPException:
@@ -347,10 +355,27 @@ def actualizar_maestro(
         )
 
 
+# Constantes para cálculo de maestros
+MINIMO_MAESTROS = 40  # Mínimo para 2 grupos por cuatrimestre
+GRUPOS_BASE = 2  # Grupos por cuatrimestre en configuración base
+CUATRIMESTRES_ACTIVOS = 8  # Cuatrimestres que no son estadía (1-5, 7-9)
+HORAS_PROMEDIO_GRUPO = 35  # Horas semanales promedio por grupo
+HORAS_MAX_MAESTRO = 15  # Horas máximas por semana por maestro
+MAESTROS_POR_GRUPO_EXTRA = 3  # Maestros adicionales necesarios por cada grupo extra
+
+
 @app.delete("/api/maestros/{maestro_id}")
 def eliminar_maestro(maestro_id: int, db: Session = Depends(get_db)):
-    """Elimina un maestro"""
+    """Elimina un maestro (no permite si hay menos de 40 maestros)"""
     try:
+        # Verificar cantidad mínima de maestros
+        total_maestros = db.query(Maestro).count()
+        if total_maestros <= MINIMO_MAESTROS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"No se puede eliminar. Se requiere un mínimo de {MINIMO_MAESTROS} maestros para cubrir todos los horarios. Actualmente hay {total_maestros} maestros.",
+            )
+
         maestro = db.query(Maestro).filter(Maestro.id == maestro_id).first()
         if not maestro:
             raise HTTPException(status_code=404, detail="Maestro no encontrado")
@@ -783,7 +808,10 @@ def get_grupos(db: Session = Depends(get_db)):
 class GenerarHorarioRequest(BaseModel):
     plan_id: int  # ID del plan de estudios (obligatorio)
     maestro_ids: list[int]
-    grupos_generar: int = 1
+    grupos_por_cuatrimestre: dict[int, int] = (
+        {}
+    )  # {cuatrimestre: num_grupos} ej: {1: 2, 2: 3, 3: 2}
+    grupos_generar: int = 2  # Valor por defecto si no se especifica por cuatrimestre
     turno: str = "matutino"
 
 
@@ -815,7 +843,12 @@ def generar_horario(
         # Extraer datos del request
         plan_id = request.plan_id
         maestro_ids = request.maestro_ids
-        grupos_generar = request.grupos_generar
+        grupos_por_cuatrimestre = (
+            request.grupos_por_cuatrimestre
+        )  # Dict con grupos específicos por cuatrimestre
+        grupos_default = (
+            request.grupos_generar
+        )  # Valor por defecto si no está en el dict
         turno = request.turno
 
         # Validaciones
@@ -860,7 +893,7 @@ def generar_horario(
                 {
                     "id": m.id,
                     "nombre": m.nombre,
-                    "horas_max_dia": m.horas_max_dia,
+                    "horas_max_semana": m.horas_max_semana,  # Máximo 15 horas por semana
                     "materias_ids": materias_puede_impartir,
                     "dias_disponibles": dias_disponibles,
                 }
@@ -903,8 +936,14 @@ def generar_horario(
                 for m in materias_cuatrimestre
             ]
 
+            # Obtener número de grupos para este cuatrimestre específico
+            # Si está en el diccionario usa ese valor, si no usa el default
+            num_grupos_cuatri = grupos_por_cuatrimestre.get(
+                cuatrimestre, grupos_default
+            )
+
             # GENERAR UN HORARIO POR CADA GRUPO DE ESTE CUATRIMESTRE
-            for grupo_num in range(1, grupos_generar + 1):
+            for grupo_num in range(1, num_grupos_cuatri + 1):
                 nombre_grupo = f"{nombre_carrera} {cuatrimestre}-{grupo_num}"
 
                 grupo = Grupo(
@@ -965,7 +1004,11 @@ def generar_horario(
                         }
                     )
 
-        total_grupos = len(cuatrimestres_generados) * grupos_generar
+        # Calcular total de grupos generados
+        total_grupos = sum(
+            grupos_por_cuatrimestre.get(c, grupos_default)
+            for c in cuatrimestres_generados
+        )
 
         return {
             "message": f"Se generaron horarios para {len(cuatrimestres_generados)} cuatrimestres de {nombre_carrera}",
@@ -974,7 +1017,10 @@ def generar_horario(
             "cuatrimestres_estadia": [
                 c for c in CUATRIMESTRES_ESTADIA if c <= plan.total_cuatrimestres
             ],
-            "grupos_por_cuatrimestre": grupos_generar,
+            "grupos_por_cuatrimestre": {
+                c: grupos_por_cuatrimestre.get(c, grupos_default)
+                for c in cuatrimestres_generados
+            },
             "total_grupos": total_grupos,
             "turno": turno,
             "total_asignaciones": total_asignaciones,

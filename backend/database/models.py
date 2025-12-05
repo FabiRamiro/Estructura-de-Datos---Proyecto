@@ -25,7 +25,7 @@ class Maestro(Base):
     nombre = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False)
     numero = Column(String(50), nullable=True)
-    horas_max_dia = Column(Integer, default=8)
+    horas_max_semana = Column(Integer, default=15)  # Máximo 15 horas por semana
     creado_en = Column(TIMESTAMP, server_default=func.now())
 
     disponibilidades = relationship(
