@@ -84,9 +84,20 @@ function MaestrosUpload({ onUploadSuccess }) {
         <p>
           <strong>Formato CSV esperado:</strong>
         </p>
-        <code>nombre,email,horas_max_dia</code>
+        <code>nombre,email,horas_max_dia,materias,dias_disponibles</code>
         <p style={{ marginTop: "8px", fontSize: "0.9em" }}>
-          Ejemplo: <code>Dr. Juan Pérez,juan@universidad.edu,8</code>
+          Ejemplo:{" "}
+          <code>Juan Perez,juan@upv.edu.mx,8,INGLES I|INGLES II,0|1|2|3|4</code>
+        </p>
+        <p
+          style={{
+            marginTop: "4px",
+            fontSize: "0.85em",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Dias: 0=Lun, 1=Mar, 2=Mie, 3=Jue, 4=Vie | Separar materias y dias con
+          |
         </p>
       </div>
     </div>

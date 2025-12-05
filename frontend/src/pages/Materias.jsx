@@ -455,7 +455,7 @@ function Materias() {
               onClick={handleCrearPlanLITI}
               disabled={loading}
             >
-              Cargar Plan LITI
+              Cargar Plan ITIID
             </button>
             <button
               className="btn-agregar"
@@ -641,50 +641,58 @@ function Materias() {
             {showMateriaForm && (
               <div className="materia-form-inline">
                 <form onSubmit={handleAgregarMateria} className="form-inline">
-                  <input
-                    type="text"
-                    value={materiaFormData.nombre}
-                    onChange={(e) =>
-                      setMateriaFormData({
-                        ...materiaFormData,
-                        nombre: e.target.value,
-                      })
-                    }
-                    placeholder="Nombre de la materia"
-                    required
-                  />
-                  <input
-                    type="number"
-                    value={materiaFormData.horas_semanales}
-                    onChange={(e) =>
-                      setMateriaFormData({
-                        ...materiaFormData,
-                        horas_semanales: e.target.value,
-                      })
-                    }
-                    min="1"
-                    max="40"
-                    placeholder="Horas"
-                    required
-                    style={{ width: "80px" }}
-                  />
-                  <select
-                    value={materiaFormData.cuatrimestre}
-                    onChange={(e) =>
-                      setMateriaFormData({
-                        ...materiaFormData,
-                        cuatrimestre: e.target.value,
-                      })
-                    }
-                  >
-                    {[...Array(planSeleccionado.total_cuatrimestres)].map(
-                      (_, idx) => (
-                        <option key={idx + 1} value={idx + 1}>
-                          C{idx + 1}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  <div className="form-field">
+                    <label>Nombre</label>
+                    <input
+                      type="text"
+                      value={materiaFormData.nombre}
+                      onChange={(e) =>
+                        setMateriaFormData({
+                          ...materiaFormData,
+                          nombre: e.target.value,
+                        })
+                      }
+                      placeholder="Ej: INGLES I"
+                      required
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Horas/Semana</label>
+                    <input
+                      type="number"
+                      value={materiaFormData.horas_semanales}
+                      onChange={(e) =>
+                        setMateriaFormData({
+                          ...materiaFormData,
+                          horas_semanales: e.target.value,
+                        })
+                      }
+                      min="1"
+                      max="40"
+                      required
+                      style={{ width: "80px" }}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label>Cuatrimestre</label>
+                    <select
+                      value={materiaFormData.cuatrimestre}
+                      onChange={(e) =>
+                        setMateriaFormData({
+                          ...materiaFormData,
+                          cuatrimestre: e.target.value,
+                        })
+                      }
+                    >
+                      {[...Array(planSeleccionado.total_cuatrimestres)].map(
+                        (_, idx) => (
+                          <option key={idx + 1} value={idx + 1}>
+                            C{idx + 1}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
                   <button type="submit" className="btn-submit-inline">
                     Agregar
                   </button>

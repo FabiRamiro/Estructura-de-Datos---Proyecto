@@ -101,6 +101,35 @@
     }
 }
 
+.form-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.form-section-header h2 {
+    margin: 0;
+}
+
+.btn-cerrar-form {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 2px solid #ef4444;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-cerrar-form:hover {
+    background: rgba(239, 68, 68, 0.2);
+}
+
 @media (max-width: 768px) {
     .docentes-header {
         flex-direction: column;

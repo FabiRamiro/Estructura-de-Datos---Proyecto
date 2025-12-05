@@ -360,14 +360,7 @@ function ConsultarHorario() {
   return (
     <div className="consultar-horario-page">
       <div className="consultar-container">
-        <div className="generar-nuevo-section">
-          <button
-            className="btn-generar-nuevo"
-            onClick={() => navigate("/generar-horario")}
-          >
-            GENERAR NUEVO HORARIO
-          </button>
-        </div>
+        <div className="generar-nuevo-section"></div>
 
         {grupos.length === 0 ? (
           <div className="no-horario">

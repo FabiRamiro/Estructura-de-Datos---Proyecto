@@ -43,19 +43,6 @@ function Inicio() {
             <p>Visualiza y consulta los horarios generados previamente</p>
           </Link>
         </div>
-
-        <div className="inicio-info">
-          <h3>Caracteristicas del Sistema</h3>
-          <ul>
-            <li>
-              - Planes de estudio con materias organizadas por cuatrimestre
-            </li>
-            <li>- Generacion automatica de horarios por cuatrimestre</li>
-            <li>- Sin empalmes de horario para maestros y grupos</li>
-            <li>- Formato de horario similar al oficial de la universidad</li>
-            <li>- Gestion completa de docentes y materias</li>
-          </ul>
-        </div>
       </div>
     </div>
   );

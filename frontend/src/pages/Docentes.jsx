@@ -81,50 +81,33 @@ function Docentes() {
       <div className="docentes-container">
         <div className="docentes-header">
           <h1>Gestión de Docentes</h1>
-          <button
-            className="btn-agregar-docente"
-            onClick={() => {
-              setShowForm(!showForm);
-              setEditingDocente(null);
-            }}
-          >
-            {showForm ? "X Cancelar" : "+ Agregar Docente"}
-          </button>
-        </div>
-
-        {/* Mostrar primero las tarjetas de docentes */}
-        <div className="docentes-list-section">
-          <h2>Docentes Registrados ({maestros.length})</h2>
-          {loading ? (
-            <div className="loading">Cargando docentes...</div>
-          ) : maestros.length === 0 ? (
-            <p className="empty-state">
-              No hay docentes registrados. Agregue uno usando el botón "Agregar
-              Docente".
-            </p>
-          ) : (
-            <div className="docentes-grid">
-              {maestros.map((maestro) => (
-                <DocenteCard
-                  key={maestro.id}
-                  docente={maestro}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </div>
+          {!showForm && (
+            <button
+              className="btn-agregar-docente"
+              onClick={() => {
+                setShowForm(true);
+                setEditingDocente(null);
+              }}
+            >
+              + Agregar Docente
+            </button>
           )}
         </div>
 
-        {/* Formularios solo cuando showForm es true */}
-        {showForm && (
+        {/* Formularios - se muestran en lugar de la lista */}
+        {showForm ? (
           <>
             <div className="form-section">
-              <h2>
-                {editingDocente
-                  ? "Editar Docente"
-                  : "Ingrese los datos del nuevo Docente"}
-              </h2>
+              <div className="form-section-header">
+                <h2>
+                  {editingDocente
+                    ? "Editar Docente"
+                    : "Ingrese los datos del nuevo Docente"}
+                </h2>
+                <button className="btn-cerrar-form" onClick={handleCancelEdit}>
+                  X Cerrar
+                </button>
+              </div>
               <FormularioDocente
                 onDocenteAdded={handleDocenteAdded}
                 docenteToEdit={editingDocente}
@@ -139,6 +122,30 @@ function Docentes() {
               </div>
             )}
           </>
+        ) : (
+          /* Lista de docentes - solo se muestra cuando no hay formulario */
+          <div className="docentes-list-section">
+            <h2>Docentes Registrados ({maestros.length})</h2>
+            {loading ? (
+              <div className="loading">Cargando docentes...</div>
+            ) : maestros.length === 0 ? (
+              <p className="empty-state">
+                No hay docentes registrados. Agregue uno usando el botón
+                "Agregar Docente".
+              </p>
+            ) : (
+              <div className="docentes-grid">
+                {maestros.map((maestro) => (
+                  <DocenteCard
+                    key={maestro.id}
+                    docente={maestro}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

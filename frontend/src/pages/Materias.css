@@ -231,7 +231,7 @@
 .plan-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     margin-bottom: 0.75rem;
 }
 
@@ -251,6 +251,10 @@
     cursor: pointer;
     font-weight: bold;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
 }
 
 .btn-delete-small:hover {
@@ -511,7 +515,24 @@
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
-    align-items: center;
+    align-items: flex-end;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.form-field label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.form-field:first-child {
+    flex: 1;
+    min-width: 200px;
 }
 
 .form-inline input,
@@ -530,11 +551,6 @@
     border-color: var(--primary-color);
 }
 
-.form-inline input[type="text"] {
-    flex: 1;
-    min-width: 200px;
-}
-
 .btn-submit-inline {
     background: linear-gradient(135deg, #6366f1, #a855f7);
     color: white;
@@ -545,6 +561,7 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s;
+    align-self: flex-end;
 }
 
 .btn-submit-inline:hover {
@@ -563,6 +580,9 @@
     font-weight: bold;
     font-size: 0.85rem;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-delete-materia:hover {
@@ -573,4 +593,10 @@
 .materias-table td:last-child {
     text-align: center;
     width: 80px;
+}
+
+.materias-table td:last-child {
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
