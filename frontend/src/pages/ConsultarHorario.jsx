@@ -91,13 +91,13 @@ function ConsultarHorario() {
         setGrupos([]);
         setGrupoSeleccionado(null);
         setHorarioGrupo(null);
-        alert("✅ Todos los horarios han sido eliminados");
+        alert("Todos los horarios han sido eliminados");
         fetchGrupos();
       } else {
-        alert("❌ Error al eliminar horarios");
+        alert("Error al eliminar horarios");
       }
     } catch (err) {
-      alert(`❌ Error: ${err.message}`);
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -111,7 +111,14 @@ function ConsultarHorario() {
       return;
     }
 
-    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    const dias = [
+      "Lunes",
+      "Martes",
+      "Miercoles",
+      "Jueves",
+      "Viernes",
+      "Sabado",
+    ];
 
     // Filtrar por turno
     const asignacionesFiltradas = horarioGrupo.asignaciones.filter(
@@ -229,7 +236,14 @@ function ConsultarHorario() {
       }
     );
 
-    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    const dias = [
+      "Lunes",
+      "Martes",
+      "Miercoles",
+      "Jueves",
+      "Viernes",
+      "Sabado",
+    ];
 
     // Agrupar asignaciones por materia
     const materiaMap = {};
@@ -340,7 +354,7 @@ function ConsultarHorario() {
   };
 
   if (loading && grupos.length === 0) {
-    return <div className="loading">⏳ Cargando horarios...</div>;
+    return <div className="loading">Cargando horarios...</div>;
   }
 
   return (
@@ -417,13 +431,13 @@ function ConsultarHorario() {
                     className="btn-control btn-export"
                     onClick={exportarExcel}
                   >
-                    📊 Exportar Excel
+                    Exportar Excel
                   </button>
                   <button
                     className="btn-control btn-delete"
                     onClick={eliminarTodosHorarios}
                   >
-                    🗑️ Limpiar Horarios
+                    Limpiar Horarios
                   </button>
                 </div>
               </div>

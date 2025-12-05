@@ -7,9 +7,9 @@ from libc.time cimport time
 import random
 
 # Constantes
-DEF MAX_MATERIAS = 7           # Máximo de materias diferentes por grupo
+DEF MAX_MATERIAS = 10          # Máximo de materias diferentes por grupo
 DEF MAX_HORAS_DIA = 8          # Máximo de horas de clase por día
-DEF DIAS_SEMANA = 5            # Lunes a Viernes
+DEF DIAS_SEMANA = 5            # Lunes a Viernes (sin Sábado)
 
 # Estructura para representar una asignación
 cdef struct Asignacion:
@@ -128,7 +128,7 @@ cdef class SchedulerEngine:
         cdef int max_horas_dia = MAX_HORAS_DIA
         cdef int max_materias = MAX_MATERIAS
         
-        # Limitar a máximo 7 materias
+        # Usar todas las materias (hasta el máximo)
         materias_a_usar = materias_data[:max_materias] if len(materias_data) > max_materias else materias_data
         
         # Crear índice de maestros por materia
@@ -166,26 +166,28 @@ cdef class SchedulerEngine:
                         materias_maestro_grupo[m['id']] = materia_id
                         break
             
-            # Crear lista de materias con sus horas semanales
+            # Crear lista de materias con sus horas semanales (creditos = horas)
             materias_con_horas = []
             for materia in materias_a_usar:
                 materia_id = materia['id']
                 if materia_id not in maestro_por_materia_grupo:
                     continue
+                # Los creditos equivalen a horas semanales
                 horas_semanales = materia['horas_semanales']
                 materias_con_horas.append({
                     'id': materia_id,
-                    'horas': horas_semanales
+                    'horas': horas_semanales,
+                    'horas_asignadas': 0  # Para tracking
                 })
             
             # ESTRATEGIA REALISTA (como horario universitario real):
-            # - Horario de 7am a 2pm = 7 horas por día
-            # - Cada materia se repite en múltiples días
-            # - SOLO 1 materia por día puede tener 2 horas continuas
-            # - Las demás son de 1 hora
+            # - Horario de 7am a 2pm = 7 horas por día (o vespertino 2pm a 10pm = 8 horas)
+            # - Cada materia se repite en múltiples días según sus créditos
+            # - Distribuir las horas para cumplir exactamente los créditos semanales
+            # - Lunes a Sábado disponibles
             
-            # Calcular horas totales disponibles por semana (7 horas x 5 días = 35)
-            horas_disponibles_dia = self.hora_max - self.hora_min  # 14 - 7 = 7 horas
+            # Calcular horas totales disponibles por semana (7 horas x 6 días = 42)
+            horas_disponibles_dia = self.hora_max - self.hora_min
             
             # Calcular total de horas de todas las materias
             total_horas_materias = 0

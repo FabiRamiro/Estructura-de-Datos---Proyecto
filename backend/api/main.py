@@ -5,6 +5,7 @@ import csv
 import io
 import sys
 import os
+from typing import Optional, List
 
 # Agregar el directorio scheduler al path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scheduler"))
@@ -18,6 +19,7 @@ from database.models import (
     Asignacion,
     MaestroMateria,
     DisponibilidadMaestro,
+    PlanEstudios,
 )
 
 # Crear tablas si no existen
@@ -47,7 +49,14 @@ async def upload_maestros_csv(
 ):
     """
     Carga maestros desde un archivo CSV
-    Formato esperado: nombre,email,horas_max_dia
+    Formato esperado: nombre,email,horas_max_dia,materias,dias_disponibles
+
+    - materias: lista separada por | de nombres de materias que puede impartir
+    - dias_disponibles: numeros separados por | (0=Lun, 1=Mar, 2=Mie, 3=Jue, 4=Vie, 5=Sab)
+
+    Ejemplo:
+    nombre,email,horas_max_dia,materias,dias_disponibles
+    Dr. Juan Perez,juan@upv.edu.mx,8,INGLES I|INGLES II|INGLES III,0|1|2|3|4|5
     """
     try:
         # Leer archivo CSV
@@ -66,30 +75,85 @@ async def upload_maestros_csv(
             )
 
         maestros_creados = []
+        errores = []
 
         # Insertar maestros en la base de datos
-        for row in csv_reader:
-            # Obtener horas_max_dia, usar 8 por defecto si no existe
-            horas_max_dia = row.get("horas_max_dia", "8")
+        for idx, row in enumerate(csv_reader, start=2):
             try:
-                horas_max_dia = int(horas_max_dia)
-            except ValueError:
-                horas_max_dia = 8
+                # Obtener horas_max_dia, usar 8 por defecto si no existe
+                horas_max_dia = row.get("horas_max_dia", "8")
+                try:
+                    horas_max_dia = int(horas_max_dia)
+                except ValueError:
+                    horas_max_dia = 8
 
-            maestro = Maestro(
-                nombre=row["nombre"].strip(),
-                email=row["email"].strip(),
-                horas_max_dia=horas_max_dia,
-            )
-            db.add(maestro)
-            maestros_creados.append(maestro.nombre)
+                maestro = Maestro(
+                    nombre=row["nombre"].strip(),
+                    email=row["email"].strip(),
+                    numero=row.get("numero", "").strip(),
+                    horas_max_dia=horas_max_dia,
+                )
+                db.add(maestro)
+                db.flush()  # Para obtener el ID
+
+                # Procesar materias (separadas por |)
+                materias_str = row.get("materias", "")
+                if materias_str:
+                    nombres_materias = [
+                        m.strip().upper() for m in materias_str.split("|") if m.strip()
+                    ]
+                    for nombre_materia in nombres_materias:
+                        # Buscar materia por nombre (case insensitive)
+                        materia = (
+                            db.query(Materia)
+                            .filter(Materia.nombre.ilike(f"%{nombre_materia}%"))
+                            .first()
+                        )
+                        if materia:
+                            maestro_materia = MaestroMateria(
+                                maestro_id=maestro.id, materia_id=materia.id
+                            )
+                            db.add(maestro_materia)
+
+                # Procesar dias disponibles (separados por |)
+                dias_str = row.get("dias_disponibles", "0|1|2|3|4|5")
+                if dias_str:
+                    dias = []
+                    for d in dias_str.split("|"):
+                        try:
+                            dia = int(d.strip())
+                            if 0 <= dia <= 5:
+                                dias.append(dia)
+                        except ValueError:
+                            pass
+
+                    if not dias:
+                        dias = [0, 1, 2, 3, 4, 5]  # Por defecto todos los dias
+
+                    for dia in dias:
+                        disponibilidad = DisponibilidadMaestro(
+                            maestro_id=maestro.id,
+                            dia_semana=dia,
+                            hora_inicio=7,
+                            hora_fin=22,
+                        )
+                        db.add(disponibilidad)
+
+                maestros_creados.append(maestro.nombre)
+            except Exception as e:
+                errores.append(f"Fila {idx}: {str(e)}")
 
         db.commit()
 
-        return {
+        result = {
             "message": f"Se cargaron {len(maestros_creados)} maestros exitosamente",
             "maestros": maestros_creados,
         }
+
+        if errores:
+            result["errores"] = errores
+
+        return result
 
     except HTTPException:
         raise
@@ -133,6 +197,30 @@ def get_maestros(db: Session = Depends(get_db)):
 from pydantic import BaseModel
 
 
+# Modelo para Plan de Estudios
+class MateriaEnPlan(BaseModel):
+    nombre: str
+    horas_semanales: int
+    cuatrimestre: int
+
+
+class PlanEstudiosCreate(BaseModel):
+    nombre: str
+    descripcion: str = ""
+    total_cuatrimestres: int = 10
+    materias: List[MateriaEnPlan] = []
+
+
+class PlanEstudiosUpdate(BaseModel):
+    nombre: Optional[str] = None
+    descripcion: Optional[str] = None
+    total_cuatrimestres: Optional[int] = None
+
+
+class AgregarMateriasPlan(BaseModel):
+    materias: List[MateriaEnPlan]
+
+
 # Modelo para crear maestro
 class MaestroCreate(BaseModel):
     nombre: str
@@ -140,7 +228,7 @@ class MaestroCreate(BaseModel):
     numero: str = ""
     horas_max_dia: int = 8
     materia_ids: list[int] = []
-    dias_disponibles: list[int] = []  # Lista de días: 0=Lunes, 1=Martes, ..., 4=Viernes
+    dias_disponibles: list[int] = []  # Lista de dias: 0=Lunes, 1=Martes, ..., 4=Viernes
 
 
 # Modelo para crear materia
@@ -280,6 +368,298 @@ def eliminar_maestro(maestro_id: int, db: Session = Depends(get_db)):
         )
 
 
+# ==================== ENDPOINTS DE PLAN DE ESTUDIOS ====================
+
+
+@app.post("/api/planes-estudios")
+def crear_plan_estudios(plan_data: PlanEstudiosCreate, db: Session = Depends(get_db)):
+    """Crea un nuevo plan de estudios con sus materias"""
+    try:
+        # Crear el plan de estudios
+        plan = PlanEstudios(
+            nombre=plan_data.nombre.strip(),
+            descripcion=plan_data.descripcion.strip() if plan_data.descripcion else "",
+            total_cuatrimestres=plan_data.total_cuatrimestres,
+        )
+        db.add(plan)
+        db.commit()
+        db.refresh(plan)
+
+        # Agregar las materias del plan
+        materias_creadas = []
+        for mat_data in plan_data.materias:
+            materia = Materia(
+                nombre=mat_data.nombre.strip(),
+                horas_semanales=mat_data.horas_semanales,
+                cuatrimestre=mat_data.cuatrimestre,
+                plan_estudios_id=plan.id,
+            )
+            db.add(materia)
+            materias_creadas.append(
+                {
+                    "nombre": materia.nombre,
+                    "horas_semanales": materia.horas_semanales,
+                    "cuatrimestre": materia.cuatrimestre,
+                }
+            )
+
+        db.commit()
+
+        return {
+            "message": f"Plan de estudios '{plan.nombre}' creado exitosamente con {len(materias_creadas)} materias",
+            "plan": {
+                "id": plan.id,
+                "nombre": plan.nombre,
+                "descripcion": plan.descripcion,
+                "total_cuatrimestres": plan.total_cuatrimestres,
+                "materias": materias_creadas,
+            },
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error al crear plan de estudios: {str(e)}"
+        )
+
+
+@app.get("/api/planes-estudios")
+def get_planes_estudios(db: Session = Depends(get_db)):
+    """Obtiene todos los planes de estudio con sus materias"""
+    planes = db.query(PlanEstudios).all()
+
+    result = []
+    for plan in planes:
+        materias_por_cuatrimestre = {}
+        for materia in plan.materias:
+            cuatri = materia.cuatrimestre
+            if cuatri not in materias_por_cuatrimestre:
+                materias_por_cuatrimestre[cuatri] = []
+            materias_por_cuatrimestre[cuatri].append(
+                {
+                    "id": materia.id,
+                    "nombre": materia.nombre,
+                    "horas_semanales": materia.horas_semanales,
+                }
+            )
+
+        result.append(
+            {
+                "id": plan.id,
+                "nombre": plan.nombre,
+                "descripcion": plan.descripcion,
+                "total_cuatrimestres": plan.total_cuatrimestres,
+                "total_materias": len(plan.materias),
+                "materias_por_cuatrimestre": materias_por_cuatrimestre,
+            }
+        )
+
+    return {
+        "total": len(planes),
+        "planes": result,
+    }
+
+
+@app.get("/api/planes-estudios/{plan_id}")
+def get_plan_estudios(plan_id: int, db: Session = Depends(get_db)):
+    """Obtiene un plan de estudios especifico con sus materias"""
+    plan = db.query(PlanEstudios).filter(PlanEstudios.id == plan_id).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan de estudios no encontrado")
+
+    materias_por_cuatrimestre = {}
+    for materia in plan.materias:
+        cuatri = materia.cuatrimestre
+        if cuatri not in materias_por_cuatrimestre:
+            materias_por_cuatrimestre[cuatri] = []
+        materias_por_cuatrimestre[cuatri].append(
+            {
+                "id": materia.id,
+                "nombre": materia.nombre,
+                "horas_semanales": materia.horas_semanales,
+            }
+        )
+
+    return {
+        "id": plan.id,
+        "nombre": plan.nombre,
+        "descripcion": plan.descripcion,
+        "total_cuatrimestres": plan.total_cuatrimestres,
+        "total_materias": len(plan.materias),
+        "materias_por_cuatrimestre": materias_por_cuatrimestre,
+    }
+
+
+@app.get("/api/planes-estudios/{plan_id}/cuatrimestre/{cuatrimestre}")
+def get_materias_cuatrimestre(
+    plan_id: int, cuatrimestre: int, db: Session = Depends(get_db)
+):
+    """Obtiene las materias de un cuatrimestre especifico de un plan"""
+    plan = db.query(PlanEstudios).filter(PlanEstudios.id == plan_id).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan de estudios no encontrado")
+
+    materias = (
+        db.query(Materia)
+        .filter(
+            Materia.plan_estudios_id == plan_id, Materia.cuatrimestre == cuatrimestre
+        )
+        .all()
+    )
+
+    return {
+        "plan": plan.nombre,
+        "cuatrimestre": cuatrimestre,
+        "materias": [
+            {
+                "id": m.id,
+                "nombre": m.nombre,
+                "horas_semanales": m.horas_semanales,
+            }
+            for m in materias
+        ],
+    }
+
+
+@app.delete("/api/planes-estudios/{plan_id}")
+def eliminar_plan_estudios(plan_id: int, db: Session = Depends(get_db)):
+    """Elimina un plan de estudios y todas sus materias"""
+    try:
+        plan = db.query(PlanEstudios).filter(PlanEstudios.id == plan_id).first()
+        if not plan:
+            raise HTTPException(
+                status_code=404, detail="Plan de estudios no encontrado"
+            )
+
+        db.delete(plan)
+        db.commit()
+
+        return {"message": f"Plan de estudios '{plan.nombre}' eliminado exitosamente"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar plan de estudios: {str(e)}"
+        )
+
+
+@app.put("/api/planes-estudios/{plan_id}")
+def actualizar_plan_estudios(
+    plan_id: int, plan_data: PlanEstudiosUpdate, db: Session = Depends(get_db)
+):
+    """Actualiza un plan de estudios existente"""
+    try:
+        plan = db.query(PlanEstudios).filter(PlanEstudios.id == plan_id).first()
+        if not plan:
+            raise HTTPException(
+                status_code=404, detail="Plan de estudios no encontrado"
+            )
+
+        if plan_data.nombre is not None:
+            plan.nombre = plan_data.nombre.strip()
+        if plan_data.descripcion is not None:
+            plan.descripcion = plan_data.descripcion.strip()
+        if plan_data.total_cuatrimestres is not None:
+            plan.total_cuatrimestres = plan_data.total_cuatrimestres
+
+        db.commit()
+        db.refresh(plan)
+
+        return {
+            "message": f"Plan de estudios '{plan.nombre}' actualizado exitosamente",
+            "plan": {
+                "id": plan.id,
+                "nombre": plan.nombre,
+                "descripcion": plan.descripcion,
+                "total_cuatrimestres": plan.total_cuatrimestres,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error al actualizar plan de estudios: {str(e)}"
+        )
+
+
+@app.post("/api/planes-estudios/{plan_id}/materias")
+def agregar_materias_plan(
+    plan_id: int, materias_data: AgregarMateriasPlan, db: Session = Depends(get_db)
+):
+    """Agrega materias a un plan de estudios existente"""
+    try:
+        plan = db.query(PlanEstudios).filter(PlanEstudios.id == plan_id).first()
+        if not plan:
+            raise HTTPException(
+                status_code=404, detail="Plan de estudios no encontrado"
+            )
+
+        materias_creadas = []
+        for mat_data in materias_data.materias:
+            materia = Materia(
+                nombre=mat_data.nombre.strip(),
+                horas_semanales=mat_data.horas_semanales,
+                cuatrimestre=mat_data.cuatrimestre,
+                plan_estudios_id=plan.id,
+            )
+            db.add(materia)
+            materias_creadas.append(
+                {
+                    "nombre": materia.nombre,
+                    "horas_semanales": materia.horas_semanales,
+                    "cuatrimestre": materia.cuatrimestre,
+                }
+            )
+
+        db.commit()
+
+        return {
+            "message": f"Se agregaron {len(materias_creadas)} materias al plan '{plan.nombre}'",
+            "materias_agregadas": materias_creadas,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error al agregar materias: {str(e)}"
+        )
+
+
+@app.delete("/api/planes-estudios/{plan_id}/materias/{materia_id}")
+def eliminar_materia_plan(plan_id: int, materia_id: int, db: Session = Depends(get_db)):
+    """Elimina una materia de un plan de estudios"""
+    try:
+        materia = (
+            db.query(Materia)
+            .filter(Materia.id == materia_id, Materia.plan_estudios_id == plan_id)
+            .first()
+        )
+        if not materia:
+            raise HTTPException(
+                status_code=404, detail="Materia no encontrada en este plan"
+            )
+
+        nombre = materia.nombre
+        db.delete(materia)
+        db.commit()
+
+        return {"message": f"Materia '{nombre}' eliminada exitosamente"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Error al eliminar materia: {str(e)}"
+        )
+
+
+# ==================== ENDPOINTS DE MATERIAS ====================
+
+
 @app.post("/api/materias")
 def crear_materia(materia_data: MateriaCreate, db: Session = Depends(get_db)):
     """Crea una nueva materia"""
@@ -311,7 +691,13 @@ def get_materias(db: Session = Depends(get_db)):
     return {
         "total": len(materias),
         "materias": [
-            {"id": m.id, "nombre": m.nombre, "horas_semanales": m.horas_semanales}
+            {
+                "id": m.id,
+                "nombre": m.nombre,
+                "horas_semanales": m.horas_semanales,
+                "cuatrimestre": m.cuatrimestre,
+                "plan_estudios_id": m.plan_estudios_id,
+            }
             for m in materias
         ],
     }
@@ -395,11 +781,14 @@ def get_grupos(db: Session = Depends(get_db)):
 
 # Modelo para generar horario
 class GenerarHorarioRequest(BaseModel):
+    plan_id: int  # ID del plan de estudios (obligatorio)
     maestro_ids: list[int]
     grupos_generar: int = 1
     turno: str = "matutino"
-    nombre_carrera: str
-    cuatrimestre: str
+
+
+# Cuatrimestres de estadía (no tienen horario de clases)
+CUATRIMESTRES_ESTADIA = [6, 10]
 
 
 @app.post("/api/generar-horario")
@@ -408,38 +797,43 @@ def generar_horario(
     db: Session = Depends(get_db),
 ):
     """
-    Genera horarios para múltiples grupos con nombres dinámicos
-    Formato: NOMBRE_CARRERA CUATRIMESTRE-N (ej: ITIID 5-1, ITIID 5-2)
+    Genera horarios para TODOS los cuatrimestres de un plan de estudios.
+    Excluye automaticamente los cuatrimestres de estadia (5 y 10).
+    Formato de grupos: NOMBRE_PLAN CUATRIMESTRE-N (ej: LITI 1-1, LITI 2-1, etc.)
 
     Considera:
+    - Las materias de cada cuatrimestre
     - Solo los docentes seleccionados
     - Las materias que cada docente puede impartir
-    - Las horas máximas por día de cada docente
-    - Los días disponibles de cada docente
+    - Las horas maximas por dia de cada docente (creditos = horas semanales)
+    - Los dias disponibles de cada docente (Lunes a Sabado)
     """
     try:
-        # Importar el módulo Cython compilado
+        # Importar el modulo Cython compilado
         import scheduler
 
         # Extraer datos del request
+        plan_id = request.plan_id
         maestro_ids = request.maestro_ids
         grupos_generar = request.grupos_generar
         turno = request.turno
-        nombre_carrera = request.nombre_carrera
-        cuatrimestre = request.cuatrimestre
 
         # Validaciones
         if not maestro_ids:
             raise HTTPException(
                 status_code=400, detail="Debe seleccionar al menos un docente"
             )
-        if not nombre_carrera or not cuatrimestre:
+
+        # Obtener el plan de estudios
+        plan = db.query(PlanEstudios).filter(PlanEstudios.id == plan_id).first()
+        if not plan:
             raise HTTPException(
-                status_code=400,
-                detail="Debe proporcionar nombre de carrera y cuatrimestre",
+                status_code=404, detail="Plan de estudios no encontrado"
             )
 
-        # Obtener solo los maestros seleccionados con sus datos completos
+        nombre_carrera = plan.nombre
+
+        # Obtener los maestros seleccionados
         maestros = db.query(Maestro).filter(Maestro.id.in_(maestro_ids)).all()
 
         if not maestros:
@@ -447,39 +841,20 @@ def generar_horario(
                 status_code=400, detail="No se encontraron los docentes seleccionados"
             )
 
-        # Obtener las materias que pueden impartir los maestros seleccionados
-        # Solo materias que al menos un maestro puede dar
-        materias_ids = set()
-        for maestro in maestros:
-            for mm in maestro.materias:
-                materias_ids.add(mm.materia_id)
-
-        if not materias_ids:
-            raise HTTPException(
-                status_code=400,
-                detail="Los docentes seleccionados no tienen materias asignadas. Asigne materias a los docentes primero.",
-            )
-
-        materias = db.query(Materia).filter(Materia.id.in_(materias_ids)).all()
-
         # ELIMINAR TODOS LOS HORARIOS Y GRUPOS ANTERIORES
         db.query(Asignacion).delete()
         db.query(HorarioGenerado).delete()
         db.query(Grupo).delete()
         db.commit()
 
-        # Preparar datos de maestros con toda su información
+        # Preparar datos de maestros (se reutiliza para todos los cuatrimestres)
         maestros_data = []
         for m in maestros:
-            # Obtener IDs de materias que puede impartir
             materias_puede_impartir = [mm.materia_id for mm in m.materias]
-
-            # Obtener días disponibles
             dias_disponibles = [d.dia_semana for d in m.disponibilidades]
 
-            # Si no tiene días configurados, usar todos los días
             if not dias_disponibles:
-                dias_disponibles = [0, 1, 2, 3, 4]  # Lunes a Viernes
+                dias_disponibles = [0, 1, 2, 3, 4]  # Lunes a Viernes (sin Sabado)
 
             maestros_data.append(
                 {
@@ -491,91 +866,117 @@ def generar_horario(
                 }
             )
 
-        # Preparar datos de materias
-        materias_data = [
-            {"id": m.id, "nombre": m.nombre, "horas_semanales": m.horas_semanales}
-            for m in materias
-        ]
-
         total_asignaciones = 0
         horarios_creados = []
+        cuatrimestres_generados = []
 
-        # Determinar horas según el turno
+        # Determinar horas segun el turno
         if turno.lower() == "matutino":
-            hora_min, hora_max = 7, 14  # 7:00 AM a 2:00 PM (7 horas)
+            hora_min, hora_max = 7, 14  # 7:00 AM a 2:00 PM
         else:  # vespertino
-            hora_min, hora_max = 14, 22  # 2:00 PM a 10:00 PM (8 horas)
+            hora_min, hora_max = 14, 22  # 2:00 PM a 10:00 PM
 
-        # GENERAR UN HORARIO POR CADA GRUPO CON NOMBRE DINÁMICO
-        for grupo_num in range(1, grupos_generar + 1):
-            # Crear nombre dinámico: "ITIID 5-1", "ITIID 5-2", etc.
-            nombre_grupo = f"{nombre_carrera} {cuatrimestre}-{grupo_num}"
+        # ITERAR POR TODOS LOS CUATRIMESTRES (excepto estadias)
+        for cuatrimestre in range(1, plan.total_cuatrimestres + 1):
+            # Saltar cuatrimestres de estadia
+            if cuatrimestre in CUATRIMESTRES_ESTADIA:
+                continue
 
-            # Crear el grupo
-            grupo = Grupo(
-                nombre=nombre_grupo,
-                semestre=int(cuatrimestre) if cuatrimestre.isdigit() else 1,
-            )
-            db.add(grupo)
-            db.commit()
-            db.refresh(grupo)
-
-            grupos_data = [{"id": grupo.id, "nombre": grupo.nombre}]
-
-            # Crear instancia NUEVA del motor para cada grupo (resetea el estado)
-            engine = scheduler.SchedulerEngine(
-                len(maestros), len(materias), 1, hora_min, hora_max
+            # Obtener materias del cuatrimestre
+            materias_cuatrimestre = (
+                db.query(Materia)
+                .filter(
+                    Materia.plan_estudios_id == plan_id,
+                    Materia.cuatrimestre == cuatrimestre,
+                )
+                .all()
             )
 
-            # Generar horario para este grupo
-            asignaciones = engine.generar_horario(
-                maestros_data, materias_data, grupos_data
-            )
+            if not materias_cuatrimestre:
+                continue  # Saltar si no hay materias
 
-            # Guardar en base de datos solo si se generaron asignaciones
-            if len(asignaciones) > 0:
-                horario = HorarioGenerado(estado="generado", turno=turno.lower())
-                db.add(horario)
+            cuatrimestres_generados.append(cuatrimestre)
+
+            # Preparar datos de materias para este cuatrimestre
+            materias_data = [
+                {"id": m.id, "nombre": m.nombre, "horas_semanales": m.horas_semanales}
+                for m in materias_cuatrimestre
+            ]
+
+            # GENERAR UN HORARIO POR CADA GRUPO DE ESTE CUATRIMESTRE
+            for grupo_num in range(1, grupos_generar + 1):
+                nombre_grupo = f"{nombre_carrera} {cuatrimestre}-{grupo_num}"
+
+                grupo = Grupo(
+                    nombre=nombre_grupo,
+                    semestre=cuatrimestre,
+                )
+                db.add(grupo)
                 db.commit()
-                db.refresh(horario)
+                db.refresh(grupo)
 
-                for asig in asignaciones:
-                    asignacion_db = Asignacion(
-                        horario_id=horario.id,
-                        maestro_id=asig["maestro_id"],
-                        materia_id=asig["materia_id"],
-                        grupo_id=grupo.id,
-                        dia_semana=asig["dia_semana"],
-                        hora_inicio=asig["hora_inicio"],
-                        hora_fin=asig["hora_fin"],
+                grupos_data = [{"id": grupo.id, "nombre": grupo.nombre}]
+
+                # Crear instancia del motor de horarios
+                engine = scheduler.SchedulerEngine(
+                    len(maestros), len(materias_cuatrimestre), 1, hora_min, hora_max
+                )
+
+                # Generar horario
+                asignaciones = engine.generar_horario(
+                    maestros_data, materias_data, grupos_data
+                )
+
+                if len(asignaciones) > 0:
+                    horario = HorarioGenerado(estado="generado", turno=turno.lower())
+                    db.add(horario)
+                    db.commit()
+                    db.refresh(horario)
+
+                    for asig in asignaciones:
+                        asignacion_db = Asignacion(
+                            horario_id=horario.id,
+                            maestro_id=asig["maestro_id"],
+                            materia_id=asig["materia_id"],
+                            grupo_id=grupo.id,
+                            dia_semana=asig["dia_semana"],
+                            hora_inicio=asig["hora_inicio"],
+                            hora_fin=asig["hora_fin"],
+                        )
+                        db.add(asignacion_db)
+
+                    db.commit()
+                    total_asignaciones += len(asignaciones)
+                    horarios_creados.append(
+                        {
+                            "horario_id": horario.id,
+                            "grupo": grupo.nombre,
+                            "cuatrimestre": cuatrimestre,
+                            "asignaciones": len(asignaciones),
+                        }
                     )
-                    db.add(asignacion_db)
+                else:
+                    horarios_creados.append(
+                        {
+                            "horario_id": None,
+                            "grupo": grupo.nombre,
+                            "cuatrimestre": cuatrimestre,
+                            "asignaciones": 0,
+                        }
+                    )
 
-                db.commit()
-                total_asignaciones += len(asignaciones)
-                horarios_creados.append(
-                    {
-                        "horario_id": horario.id,
-                        "grupo": grupo.nombre,
-                        "asignaciones": len(asignaciones),
-                    }
-                )
-            else:
-                # Si no se generaron asignaciones, aún reportar el grupo
-                horarios_creados.append(
-                    {
-                        "horario_id": None,
-                        "grupo": grupo.nombre,
-                        "asignaciones": 0,
-                    }
-                )
+        total_grupos = len(cuatrimestres_generados) * grupos_generar
 
         return {
-            "message": f"Se generaron {grupos_generar} horarios exitosamente para {nombre_carrera} {cuatrimestre}",
-            "grupos_generados": grupos_generar,
+            "message": f"Se generaron horarios para {len(cuatrimestres_generados)} cuatrimestres de {nombre_carrera}",
+            "plan": nombre_carrera,
+            "cuatrimestres_generados": cuatrimestres_generados,
+            "cuatrimestres_estadia": [
+                c for c in CUATRIMESTRES_ESTADIA if c <= plan.total_cuatrimestres
+            ],
+            "grupos_por_cuatrimestre": grupos_generar,
+            "total_grupos": total_grupos,
             "turno": turno,
-            "nombre_carrera": nombre_carrera,
-            "cuatrimestre": cuatrimestre,
             "total_asignaciones": total_asignaciones,
             "horarios": horarios_creados,
         }
@@ -646,7 +1047,7 @@ def get_horario(horario_id: int, db: Session = Depends(get_db)):
         db.query(Asignacion).filter(Asignacion.horario_id == horario_id).all()
     )
 
-    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"]
+    dias = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"]
 
     return {
         "id": horario.id,
