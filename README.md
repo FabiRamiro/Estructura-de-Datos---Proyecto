@@ -31,12 +31,14 @@ pip install -r requirements.txt
 ### 3. Compilar modulo Cython
 
 Con MinGW:
+
 ```bash
 cd backend/scheduler
 python setup.py build_ext --inplace --compiler=mingw32
 ```
 
 Con Visual Studio:
+
 ```bash
 cd backend/scheduler
 python setup.py build_ext --inplace
